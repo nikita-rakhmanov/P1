@@ -1,13 +1,13 @@
-class Character {
+class Character extends PhysicsObject {
     // animation variables
     private final static float ANIMATION_SPEED = 0.1f;
     private final static float ATTACK_ANIMATION_SPEED = 0.3f; // Faster attack animation speed
     private final static float MOVEMENT_SPEED = 1.5f;
-    private final static float JUMP_HEIGHT = 50.0f;
+    private final static float JUMP_FORCE = 8.0f; // Reduced force applied when jumping
+    private final static float GRAVITY = 2.5f; // Gravitational force
+    private final static float JUMP_HEIGHT = 8.0f;
     private final static int JUMP_PAUSE_DURATION = 1; // Number of frames to pause at the peak of the jump
-    private final static int ATTACK_COOLDOWN_DURATION = 30; // Number of frames to wait before attacking again
 
-    private PVector position;
     private PImage[] idleFrames;
     private PImage[] runFrames;
     private PImage[] jumpFrames;
@@ -23,7 +23,7 @@ class Character {
     private int currentAttackIndex = 0;
 
     public Character(PVector start) {
-        this.position = start;
+        super(start, 1.0f); // Initialize PhysicsObject with position and mass
         // load idleImages into idleFrames
         this.idleFrames = new PImage[16];
         for (int i = 0; i < 16; i++) {
@@ -60,6 +60,9 @@ class Character {
     }
 
     public void update() {
+        // Apply gravity
+        applyForce(new PVector(0, GRAVITY));
+
         // update animation
         if (attacking) {
             currentFrame += ATTACK_ANIMATION_SPEED;
@@ -83,16 +86,18 @@ class Character {
         }
 
         // update position
+        //TODO: movement should be just coords change: no physics for character
+        //CONT: but add force movement for colision detection with other objects
         if (movingLeft) {
-            this.position.x -= MOVEMENT_SPEED;
+            applyForce(new PVector(-MOVEMENT_SPEED, 0));
             this.hFlip = true;
         }
         if (movingRight) {
-            this.position.x += MOVEMENT_SPEED;
+            applyForce(new PVector(MOVEMENT_SPEED, 0));
             this.hFlip = false;
         }
         if (jumpingUp) {
-            this.position.y -= MOVEMENT_SPEED;
+            applyForce(new PVector(0, -JUMP_FORCE));
             if (this.position.y <= jumpStartY - JUMP_HEIGHT) {
                 jumpingUp = false;
                 jumpPauseCounter = JUMP_PAUSE_DURATION;
@@ -105,12 +110,15 @@ class Character {
             }
         }
         if (fallingDown) {
-            this.position.y += MOVEMENT_SPEED;
             if (this.position.y >= jumpStartY) {
                 this.position.y = jumpStartY;
                 fallingDown = false;
+                velocity.y = 0; // Stop vertical velocity when landing
             }
         }
+
+        // Update physics
+        super.update();
     }
 
     public void draw() {
