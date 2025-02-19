@@ -4,6 +4,7 @@ class PhysicsObject {
     PVector acceleration;
     float mass;
     float radius; // For collision detection
+    float friction = 0.7; // Friction coefficient to reduce sliding
 
     PhysicsObject(PVector position, float mass) {
         this.position = position.copy();
@@ -21,24 +22,25 @@ class PhysicsObject {
 
     void update() {
         velocity.add(acceleration);
+        velocity.mult(friction); // Apply friction to reduce sliding
         position.add(velocity);
         acceleration.mult(0); // Reset acceleration after each update
 
         // Boundary checks to keep the object within the screen
         if (position.x < radius) {
             position.x = radius;
-            velocity.x *= -0.5; // Bounce back with some energy loss
+            velocity.x = 0; // Stop horizontal velocity when hitting the boundary
         } else if (position.x > width - radius) {
             position.x = width - radius;
-            velocity.x *= -0.5; // Bounce back with some energy loss
+            velocity.x = 0; // Stop horizontal velocity when hitting the boundary
         }
 
         if (position.y < radius) {
             position.y = radius;
-            velocity.y *= -0.5; // Bounce back with some energy loss
+            velocity.y = 0; // Stop vertical velocity when hitting the boundary
         } else if (position.y > height - radius) {
             position.y = height - radius;
-            velocity.y *= -0.5; // Bounce back with some energy loss
+            velocity.y = 0; // Stop vertical velocity when hitting the boundary
         }
     }
 

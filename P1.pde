@@ -13,7 +13,7 @@ void setup() {
   bg = new Background("CharacterPack/Enviro/BG/trees_bg.png");
   character = new Character(new PVector(width / 2, height - 20)); // Spawn at the bottom middle
   platform = new Platform("CharacterPack/GPE/platforms/platform_through.png");
-  enemy = new Enemy(new PVector(width / 2, height - 20)); 
+  enemy = new Enemy(new PVector(width / 2 + 100, height - 20), character); // Spawn enemy to the right of the player
 }
 
 void keyPressed() {
@@ -35,7 +35,10 @@ void draw() {
   enemy.draw();
 
   // Check for collision and resolve
-  if (character.isColliding(enemy)) {
-    character.resolveCollision(enemy);
+  if (character.isAttacking() && character.isInAttackRange(enemy) && character.isAttackCollisionFrame()) {
+    PVector force = PVector.sub(enemy.position, character.position).normalize().mult(10); // Adjust force as necessary
+    force.y = -10; // Add upward force
+    enemy.applyForce(force);
+    enemy.takeHit(); // Make the enemy take a hit
   }
 }

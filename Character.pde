@@ -2,11 +2,15 @@ class Character extends PhysicsObject {
     // animation variables
     private final static float ANIMATION_SPEED = 0.1f;
     private final static float ATTACK_ANIMATION_SPEED = 0.3f; // Faster attack animation speed
-    private final static float MOVEMENT_SPEED = 1.5f;
-    private final static float JUMP_FORCE = 8.0f; // Reduced force applied when jumping
+    private final static float MOVEMENT_SPEED = 1.3f;
+    private final static float JUMP_FORCE = 12.0f; // Reduced force applied when jumping
     private final static float GRAVITY = 2.5f; // Gravitational force
-    private final static float JUMP_HEIGHT = 8.0f;
+    private final static float GLIDE_GRAVITY = 0.5f; // Reduced gravitational force when gliding
+    private final static float JUMP_HEIGHT = 40.0f;
     private final static int JUMP_PAUSE_DURATION = 1; // Number of frames to pause at the peak of the jump
+    private final static float ATTACK_RANGE = 70.0f; // Attack range
+    private final static int ATTACK_COLLISION_START_FRAME = 4; // Start frame for collision detection
+    private final static int ATTACK_COLLISION_END_FRAME = 8; // End frame for collision detection
 
     private PImage[] idleFrames;
     private PImage[] runFrames;
@@ -17,7 +21,7 @@ class Character extends PhysicsObject {
     private float currentFrame = 0.0f;
     private boolean hFlip = false;
 
-    private boolean movingLeft, movingRight, jumpingUp, fallingDown, attacking, attackingFlag;
+    private boolean movingLeft, movingRight, jumpingUp, fallingDown, attacking, attackingFlag, gliding;
     private float jumpStartY;
     private int jumpPauseCounter = 0;
     private int currentAttackIndex = 0;
@@ -61,7 +65,11 @@ class Character extends PhysicsObject {
 
     public void update() {
         // Apply gravity
-        applyForce(new PVector(0, GRAVITY));
+        if (gliding && !jumpingUp) {
+            applyForce(new PVector(0, GLIDE_GRAVITY));
+        } else {
+            applyForce(new PVector(0, GRAVITY));
+        }
 
         // update animation
         if (attacking) {
@@ -86,8 +94,6 @@ class Character extends PhysicsObject {
         }
 
         // update position
-        //TODO: movement should be just coords change: no physics for character
-        //CONT: but add force movement for colision detection with other objects
         if (movingLeft) {
             applyForce(new PVector(-MOVEMENT_SPEED, 0));
             this.hFlip = true;
@@ -155,6 +161,19 @@ class Character extends PhysicsObject {
         return this.position.y;
     }
 
+    public boolean isAttacking() {
+        return attacking;
+    }
+
+    public boolean isInAttackRange(PhysicsObject other) {
+        float distance = PVector.dist(this.position, other.position);
+        return distance < ATTACK_RANGE;
+    }
+
+    public boolean isAttackCollisionFrame() {
+        return currentFrame >= ATTACK_COLLISION_START_FRAME && currentFrame <= ATTACK_COLLISION_END_FRAME;
+    }
+
     void handleKeyPressed(char key) {
         if (key == 'a' || key == 'A') {
             movingLeft = true;
@@ -178,6 +197,8 @@ class Character extends PhysicsObject {
             attackingFlag = true;
             currentFrame = 0;
             currentAttackIndex = (currentAttackIndex + 1) % attackFrames.length;
+        } else if (key == CODED && keyCode == SHIFT) {
+            gliding = true;
         }
     }
 
@@ -188,6 +209,8 @@ class Character extends PhysicsObject {
             movingRight = false;
         } else if (key == ' ') {
             attackingFlag = false;
+        } else if (key == CODED && keyCode == SHIFT) {
+            gliding = false;
         }
     }
 }
