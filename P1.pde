@@ -34,11 +34,30 @@ void draw() {
   enemy.update();
   enemy.draw();
 
-  // Check for collision and resolve
-  if (character.isAttacking() && character.isInAttackRange(enemy) && character.isAttackCollisionFrame()) {
+  // display health of the player in the left top corner
+  fill(255);
+  textSize(20);
+  text("Health: " + character.getHealth(), 50, 50);
+
+  // display health of the enemy in the right top corner
+  fill(255);
+  textSize(20);
+  text("Health: " + enemy.getHealth(), width - 150, 50);
+
+
+  // Check for collision and resolve (player attacks enemy)
+  if (character.isAttacking() && character.isInAttackRange(enemy) && character.isAttackCollisionFrame() && !enemy.isDead) {
     PVector force = PVector.sub(enemy.position, character.position).normalize().mult(10); // Adjust force as necessary
     force.y = -10; // Add upward force
     enemy.applyForce(force);
     enemy.takeHit(); // Make the enemy take a hit
+  }
+
+  // enemy attacks player
+  if (enemy.isAttacking() && enemy.isInAttackRange(character) && enemy.isInAttackCollisionFrame() && !character.isDead) {
+    PVector force = PVector.sub(character.position, enemy.position).normalize().mult(10); // Adjust force as necessary
+    force.y = -10; // Add upward force
+    character.applyForce(force);
+    character.takeDamage(10); // Make the player take damage
   }
 }

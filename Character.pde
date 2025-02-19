@@ -25,6 +25,8 @@ class Character extends PhysicsObject {
     private float jumpStartY;
     private int jumpPauseCounter = 0;
     private int currentAttackIndex = 0;
+    private int health = 100; // Initial health
+    public boolean isDead = false;
 
     public Character(PVector start) {
         super(start, 1.0f); // Initialize PhysicsObject with position and mass
@@ -174,6 +176,19 @@ class Character extends PhysicsObject {
         return currentFrame >= ATTACK_COLLISION_START_FRAME && currentFrame <= ATTACK_COLLISION_END_FRAME;
     }
 
+    public void takeDamage(int damage) {
+        health -= damage;
+        // make the player red for a short time
+        fill(255, 0, 0, 100);
+        rect(0, 0, width, height);
+        // go back to normal color
+        fill(255);  
+        if (health <= 0) {
+            // Handle player death (e.g., game over, respawn, etc.)
+            println("Player is dead");
+        }
+    }
+
     void handleKeyPressed(char key) {
         if (key == 'a' || key == 'A') {
             movingLeft = true;
@@ -212,5 +227,10 @@ class Character extends PhysicsObject {
         } else if (key == CODED && keyCode == SHIFT) {
             gliding = false;
         }
+    }
+
+    // get health
+    public int getHealth() {
+        return health;
     }
 }
