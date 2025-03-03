@@ -387,4 +387,5 @@ class Character extends PhysicsObject {
             this.springForceFrames = 0; // Reset the frame counter when activating spring bounce
         }
     }
+    
 }

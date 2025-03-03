@@ -1,56 +1,104 @@
 Background bg;
 Character character;
-Platform platform;
-Enemy enemy;
-Water water;
-boolean attackLanded = false;
-boolean gameOver = false; // Track game over state
-boolean gameStarted = false; // Track if game has started
+Platform ground;
+ArrayList<Enemy> enemies = new ArrayList<Enemy>();
 ArrayList<Spring> springs = new ArrayList<Spring>();
-
-// Our new physics engine
+ArrayList<PlatformObject> platforms = new ArrayList<PlatformObject>();
+boolean attackLanded = false;
+boolean gameOver = false;
+boolean gameStarted = false;
 PhysicsEngine physicsEngine;
+
+// Create a PlatformObject class for individual platforms
+class PlatformObject extends PhysicsObject {
+  PImage platformImage;
+  
+  PlatformObject(float x, float y) {
+    super(new PVector(x, y), 0.0f); // Static object with infinite mass
+    this.isStatic = true;
+    this.radius = 25.0f;
+    
+    // Load the platform image
+    platformImage = loadImage("CharacterPack/GPE/platforms/platform_through.png");
+  }
+  
+  void draw() {
+    image(platformImage, position.x, position.y);
+  }
+}
 
 void setup() {
   size(1024, 768);
   noSmooth();
-
   imageMode(CENTER);
   textMode(CENTER);
 
   // Initialize physics engine
   physicsEngine = new PhysicsEngine();
 
+  // Load background and ground
   bg = new Background("CharacterPack/Enviro/BG/trees_bg.png");
-  character = new Character(new PVector(width / 2, height - 20)); // Spawn at the bottom middle
-  platform = new Platform("CharacterPack/GPE/platforms/platform_through.png");
-  enemy = new Enemy(new PVector(width / 2 + 100, height - 20), character); // Spawn enemy to the right of the player
-
-  // Create springs and add them to the list
-  springs.add(new Spring(new PVector(width / 4, height - 20)));
-  springs.add(new Spring(new PVector(width * 3 / 4, height - 20)));
-
-  // Create water at the bottom portion of the screen
-  water = new Water(0, height - 150, width, 150);
+  ground = new Platform("CharacterPack/GPE/platforms/platform_through.png");
+  
+  // Create character in the middle
+  character = new Character(new PVector(width / 2, height - 30));
+  
+  // Create enemies on both sides
+  Enemy enemy1 = new Enemy(new PVector(width / 4, height - 30), character);
+  Enemy enemy2 = new Enemy(new PVector(width * 3 / 4, height - 30), character);
+  enemies.add(enemy1);
+  enemies.add(enemy2);
+  
+  // Create platforms for vertical traversal (from bottom to top)
+  // First layer - low platforms
+  platforms.add(new PlatformObject(width * 0.25f, height - 150));
+  platforms.add(new PlatformObject(width * 0.75f, height - 150));
+  
+  // Second layer - middle platforms
+  platforms.add(new PlatformObject(width * 0.5f, height - 270));
+  
+  // Third layer - higher platforms
+  platforms.add(new PlatformObject(width * 0.25f, height - 390));
+  platforms.add(new PlatformObject(width * 0.75f, height - 390));
+  
+  // Fourth layer - high platforms
+  platforms.add(new PlatformObject(width * 0.5f, height - 510));
+  
+  // Top layer - highest platform (goal)
+  platforms.add(new PlatformObject(width * 0.5f, height - 630));
+  
+  // Add springs at strategic locations
+  springs.add(new Spring(new PVector(width * 0.15f, height - 20))); // Left lower spring
+  springs.add(new Spring(new PVector(width * 0.85f, height - 20))); // Right lower spring
+  springs.add(new Spring(new PVector(width * 0.5f, height - 150))); // Middle spring on first platform
   
   // Add objects to physics engine
   physicsEngine.addObject(character);
-  physicsEngine.addObject(enemy);
-
-  // Add springs to physics engine
+  for (Enemy enemy : enemies) {
+    physicsEngine.addObject(enemy);
+  }
+  
   for (Spring spring : springs) {
     physicsEngine.addObject(spring);
   }
   
+  for (PlatformObject platform : platforms) {
+    physicsEngine.addObject(platform);
+  }
+  
   // Add force generators
+  GravityForce gravity = new GravityForce(1.5f);
+  DragForce drag = new DragForce(0.01f);
   
-  // Gravity force for character and enemy
-  physicsEngine.addForceGenerator(character, new GravityForce(1.5f));
-  physicsEngine.addForceGenerator(enemy, new GravityForce(1.5f));
+  // Apply forces to character
+  physicsEngine.addForceGenerator(character, gravity);
+  physicsEngine.addForceGenerator(character, drag);
   
-  // Add drag force for a bit of air resistance
-  physicsEngine.addForceGenerator(character, new DragForce(0.01f));
-  physicsEngine.addForceGenerator(enemy, new DragForce(0.01f));
+  // Apply forces to enemies
+  for (Enemy enemy : enemies) {
+    physicsEngine.addForceGenerator(enemy, gravity);
+    physicsEngine.addForceGenerator(enemy, drag);
+  }
 }
 
 void keyPressed() {
@@ -80,86 +128,122 @@ void mousePressed() {
 void draw() {
   background(0);
   bg.display();
-  platform.display();
+  ground.display();
   
   if (!gameStarted) {
     displayStartScreen();
-    return; // Skip the rest of the draw loop if game hasn't started
+    return;
   }
   
   if (!gameOver) {
-    // Update physics 
+    // Update physics engine
     physicsEngine.update();
-
-    // Update water
-    water.update();
     
-    // The character and enemy still need their own update methods for animation
-    // but we've modified their physics to use the force accumulator
+    // Update character and enemies
     character.update();
-    enemy.update();
-
-    // Check for bullet collisions with enemy
-    ArrayList<Bullet> bullets = character.getBullets();
-    for (int i = bullets.size() - 1; i >= 0; i--) {
-      Bullet bullet = bullets.get(i);
-      if (bullet.isActive() && !enemy.isDead && PVector.dist(bullet.position, enemy.position) < enemy.radius + bullet.radius) {
-        // Hit detected
-        PVector force = PVector.sub(enemy.position, bullet.position).normalize().mult(5);
-        force.y = -5; // Add some upward force
-        enemy.applyForce(force);
-        enemy.takeDamage(10); // Less damage than melee attack
-        bullet.deactivate();
-        bullets.remove(i);
-      }
+    for (Enemy enemy : enemies) {
+      enemy.update();
     }
     
-    // Check for collision and resolve (player attacks enemy)
-    if (character.isAttacking() && character.isInAttackRange(enemy) && character.isAttackCollisionFrame() && !enemy.isDead) {
-      if (!attackLanded) { // Only apply damage if this attack hasn't already landed
-        PVector force = PVector.sub(enemy.position, character.position).normalize().mult(10); // Adjust force as necessary
-        force.y = -10; // Add upward force
-        enemy.applyForce(force);
-        enemy.takeDamage(20); // Fixed damage value
-        attackLanded = true; // Mark that this attack has landed
-      }
-    }
+    // Handle bullet collisions with all enemies
+    handleBulletCollisions();
     
-    // Reset attackLanded when character is not attacking or not in collision frames
-    if (!character.isAttacking() || !character.isAttackCollisionFrame()) {
-      attackLanded = false;
-    }
-
-    // enemy attacks player (similar logic)
-    boolean enemyAttackLanded = false; // Track enemy attacks similarly
-    if (enemy.isAttacking() && enemy.isInAttackRange(character) && enemy.isInAttackCollisionFrame() && !character.isDead) {
-      if (!enemyAttackLanded) {
-        PVector force = PVector.sub(character.position, enemy.position).normalize().mult(10);
-        force.y = -10; 
-        character.applyForce(force);
-        character.takeDamage(10);
-        enemyAttackLanded = true;
-      }
-    }
+    // Handle attack collisions with all enemies
+    handleAttackCollisions();
     
-    if (!enemy.isAttacking() || !enemy.isInAttackCollisionFrame()) {
-      enemyAttackLanded = false;
-    }
+    // Check if any enemy is attacking the player
+    handleEnemyAttacks();
     
-    // Check if player is dead and set game over state
+    // Check if player is dead
     if (character.isDead) {
       gameOver = true;
     }
+    
+    // Check for platform collisions
+    handlePlatformCollisions();
   }
-
-  // check for spring collisions
-  checkSprings();
-
-  // Draw game objects
-  drawGameObjects();
   
-  // Display HUD
+  // Check for spring collisions
+  checkSprings();
+  
+  // Draw all game objects
+  drawGameObjects();
   displayHUD();
+}
+
+void handleBulletCollisions() {
+  ArrayList<Bullet> bullets = character.getBullets();
+  for (int i = bullets.size() - 1; i >= 0; i--) {
+    Bullet bullet = bullets.get(i);
+    boolean hitDetected = false;
+    
+    for (Enemy enemy : enemies) {
+      if (!hitDetected && bullet.isActive() && !enemy.isDead && 
+          PVector.dist(bullet.position, enemy.position) < enemy.radius + bullet.radius) {
+        // Hit detected
+        PVector force = PVector.sub(enemy.position, bullet.position).normalize().mult(5);
+        force.y = -5; // Add upward force
+        enemy.applyForce(force);
+        enemy.takeDamage(10);
+        bullet.deactivate();
+        bullets.remove(i);
+        hitDetected = true;
+      }
+    }
+  }
+}
+
+void handleAttackCollisions() {
+  if (character.isAttacking() && character.isAttackCollisionFrame()) {
+    for (Enemy enemy : enemies) {
+      if (!enemy.isDead && character.isInAttackRange(enemy)) {
+        if (!attackLanded) {
+          PVector force = PVector.sub(enemy.position, character.position).normalize().mult(10);
+          force.y = -10; // Add upward force
+          enemy.applyForce(force);
+          enemy.takeDamage(20);
+          attackLanded = true;
+        }
+      }
+    }
+  } else {
+    attackLanded = false;
+  }
+}
+
+void handleEnemyAttacks() {
+  for (Enemy enemy : enemies) {
+    if (enemy.isAttacking() && enemy.isInAttackRange(character) && 
+        enemy.isInAttackCollisionFrame() && !character.isDead) {
+      PVector force = PVector.sub(character.position, enemy.position).normalize().mult(10);
+      force.y = -10;
+      character.applyForce(force);
+      character.takeDamage(10);
+    }
+  }
+}
+
+void handlePlatformCollisions() {
+  float characterFeetY = character.position.y + character.radius;
+  float characterHeadY = character.position.y - character.radius;
+  
+  // Only check if character is falling down
+  if (character.velocity.y > 0) {
+    for (PlatformObject platform : platforms) {
+      float platformTopY = platform.position.y - platform.platformImage.height/2;
+      boolean isAbovePlatform = abs(character.position.x - platform.position.x) < platform.platformImage.width/2;
+      
+      // If character is above the platform and within a small vertical distance
+      if (isAbovePlatform && characterFeetY >= platformTopY && characterFeetY <= platformTopY + 10) {
+        // Stop falling and place character on the platform
+        character.position.y = platformTopY - character.radius;
+        character.velocity.y = 0;
+        character.fallingDown = false;
+        character.jumpStartY = character.position.y;
+        break;
+      }
+    }
+  }
 }
 
 void checkSprings() {
@@ -214,17 +298,23 @@ void checkSprings() {
 }
 
 void drawGameObjects() {
-  // Draw water
-  water.draw();
-
+  // Draw platforms
+  for (PlatformObject platform : platforms) {
+    platform.draw();
+  }
+  
   // Draw springs
   for (Spring spring : springs) {
     spring.draw();
   }
   
-  // Draw characters
+  // Draw character
   character.draw();
-  enemy.draw();
+  
+  // Draw enemies
+  for (Enemy enemy : enemies) {
+    enemy.draw();
+  }
 }
 
 void displayHUD() {
@@ -232,7 +322,9 @@ void displayHUD() {
   fill(255);
   textSize(20);
   text("Health: " + character.getHealth(), 50, 50);
-  text("Health: " + enemy.getHealth(), width - 150, 50);
+  for (int i = 0; i < enemies.size(); i++) {
+    text("Health: " + enemies.get(i).getHealth(), width - 150, 50 + i * 30);
+  }
   
   // Game over message if applicable
   if (gameOver) {
@@ -297,32 +389,58 @@ void resetGame() {
   gameOver = false;
   attackLanded = false;
   
-  // Clear the entire physics engine instead of removing objects individually
+  // Clear all collections
   physicsEngine = new PhysicsEngine();
+  enemies.clear();
   springs.clear();
+  platforms.clear();
   
-  // Recreate game objects
-  character = new Character(new PVector(width / 2, height - 20));
-  enemy = new Enemy(new PVector(width / 2 + 100, height - 20), character);
-
-  // Re-create springs
-  springs.add(new Spring(new PVector(width / 4, height - 20)));
-  springs.add(new Spring(new PVector(width * 3 / 4, height - 20)));
+  // Recreate character, enemies, platforms and springs
+  character = new Character(new PVector(width / 2, height - 30));
+  
+  // Recreate enemies
+  Enemy enemy1 = new Enemy(new PVector(width / 4, height - 30), character);
+  Enemy enemy2 = new Enemy(new PVector(width * 3 / 4, height - 30), character);
+  enemies.add(enemy1);
+  enemies.add(enemy2);
+  
+  // Recreate platforms (same layout as setup)
+  platforms.add(new PlatformObject(width * 0.25f, height - 150));
+  platforms.add(new PlatformObject(width * 0.75f, height - 150));
+  platforms.add(new PlatformObject(width * 0.5f, height - 270));
+  platforms.add(new PlatformObject(width * 0.25f, height - 390));
+  platforms.add(new PlatformObject(width * 0.75f, height - 390));
+  platforms.add(new PlatformObject(width * 0.5f, height - 510));
+  platforms.add(new PlatformObject(width * 0.5f, height - 630));
+  
+  // Recreate springs
+  springs.add(new Spring(new PVector(width * 0.15f, height - 20)));
+  springs.add(new Spring(new PVector(width * 0.85f, height - 20)));
+  springs.add(new Spring(new PVector(width * 0.5f, height - 150)));
   
   // Add objects to physics engine
   physicsEngine.addObject(character);
-  physicsEngine.addObject(enemy);
+  for (Enemy enemy : enemies) {
+    physicsEngine.addObject(enemy);
+  }
   
   for (Spring spring : springs) {
     physicsEngine.addObject(spring);
   }
   
-  // Add force generators (using a single generator for each type rather than duplicates)
+  for (PlatformObject platform : platforms) {
+    physicsEngine.addObject(platform);
+  }
+  
+  // Add force generators
   GravityForce gravity = new GravityForce(1.5f);
   DragForce drag = new DragForce(0.01f);
   
   physicsEngine.addForceGenerator(character, gravity);
-  physicsEngine.addForceGenerator(enemy, gravity);
   physicsEngine.addForceGenerator(character, drag);
-  physicsEngine.addForceGenerator(enemy, drag);
+  
+  for (Enemy enemy : enemies) {
+    physicsEngine.addForceGenerator(enemy, gravity);
+    physicsEngine.addForceGenerator(enemy, drag);
+  }
 }
