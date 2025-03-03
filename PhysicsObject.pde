@@ -66,4 +66,8 @@ class PhysicsObject {
         this.velocity.add(separatingVelocityVec);
         other.velocity.sub(separatingVelocityVec);
     }
+
+    public float getRadius() {
+        return radius;
+    }
 }

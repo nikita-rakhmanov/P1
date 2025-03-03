@@ -17,6 +17,7 @@ class Character extends PhysicsObject {
     private PImage[] jumpFrames;
     private PImage[] fallFrames;
     private PImage[][] attackFrames;
+    private PImage[] shootFrames;
     private int[] attackFrameCounts = {12, 13, 9}; // Number of frames in each attack animation
     private float currentFrame = 0.0f;
     private boolean hFlip = false;
@@ -27,6 +28,11 @@ class Character extends PhysicsObject {
     private int currentAttackIndex = 0;
     private int health = 100; // Initial health
     public boolean isDead = false;
+
+    private boolean shooting = false;
+    private ArrayList<Bullet> bullets = new ArrayList<Bullet>();
+    private long lastShotTime = 0;
+    private final static int SHOT_COOLDOWN = 500;
 
     public Character(PVector start) {
         super(start, 1.0f); // Initialize PhysicsObject with position and mass
@@ -63,6 +69,12 @@ class Character extends PhysicsObject {
                 this.attackFrames[j][i] = loadImage(framePath);
             }
         }
+        // Load shooting animation frames
+        this.shootFrames = new PImage[12];
+        for (int i = 0; i < 12; i++) {
+            String framePath = "CharacterPack/Player/Shoot/player_shoot_" + nf(i + 1, 2) + ".png";
+            this.shootFrames[i] = loadImage(framePath);
+        }
     }
 
     public void update() {
@@ -74,7 +86,15 @@ class Character extends PhysicsObject {
         }
 
         // update animation
-        if (attacking) {
+        if (shooting) {
+            currentFrame += ATTACK_ANIMATION_SPEED;
+            if (currentFrame >= shootFrames.length) {
+                shooting = false;
+                currentFrame = 0;
+            } else {
+                currentFrame %= shootFrames.length;
+            }
+        }   else if (attacking) {
             currentFrame += ATTACK_ANIMATION_SPEED;
             if (currentFrame >= attackFrames[currentAttackIndex].length) {
                 attacking = false;
@@ -125,25 +145,50 @@ class Character extends PhysicsObject {
             }
         }
 
+        // Update bullets
+        for (int i = bullets.size() - 1; i >= 0; i--) {
+            Bullet bullet = bullets.get(i);
+            bullet.update();
+            
+            // Remove bullets that are off-screen or hit enemies
+            if (bullet.isOffScreen()) {
+                bullets.remove(i);
+            }
+        }
+
         // Update physics
         super.update();
     }
 
     public void draw() {
         PImage[] frames;
-        if (attacking) {
+        int frameIndex = 0;
+        
+        // Determine which animation frames to use
+        if (shooting) {
+            frames = shootFrames;
+            frameIndex = min((int)currentFrame, shootFrames.length - 1);
+        } else if (attacking) {
             frames = attackFrames[currentAttackIndex];
+            frameIndex = min((int)currentFrame, attackFrames[currentAttackIndex].length - 1);
         } else if (jumpingUp) {
             frames = jumpFrames;
+            frameIndex = min((int)currentFrame, jumpFrames.length - 1);
         } else if (fallingDown) {
             frames = fallFrames;
+            frameIndex = min((int)currentFrame, fallFrames.length - 1);
         } else if (movingLeft || movingRight) {
             frames = runFrames;
+            frameIndex = min((int)currentFrame, runFrames.length - 1);
         } else {
             frames = idleFrames;
+            frameIndex = min((int)currentFrame, idleFrames.length - 1);
         }
 
-        PImage frame = frames[(int)currentFrame];
+        // Safely access the frame
+        PImage frame = frames[frameIndex];
+        
+        // Draw the character
         if (this.hFlip) {
             pushMatrix();
             scale(-1.0, 1.0);
@@ -151,6 +196,11 @@ class Character extends PhysicsObject {
             popMatrix();
         } else {
             image(frame, this.position.x, this.position.y);
+        }
+
+        // Draw bullets
+        for (Bullet bullet : bullets) {
+            bullet.draw();
         }
     }
 
@@ -185,6 +235,7 @@ class Character extends PhysicsObject {
         fill(255);  
         if (health <= 0) {
             // Handle player death (e.g., game over, respawn, etc.)
+            isDead = true;
             println("Player is dead");
         }
     }
@@ -232,5 +283,28 @@ class Character extends PhysicsObject {
     // get health
     public int getHealth() {
         return health;
+    }
+
+    public void shoot() {
+        long currentTime = millis();
+        if (currentTime - lastShotTime > SHOT_COOLDOWN && !shooting && !attacking) {
+            shooting = true;
+            currentFrame = 0;
+            
+            // Create a new bullet
+            PVector bulletPos = new PVector(position.x, position.y);
+            PVector bulletVel = new PVector(hFlip ? -10 : 10, 0); // Bullet speed and direction
+            bullets.add(new Bullet(bulletPos, bulletVel));
+            
+            lastShotTime = currentTime;
+        }
+    }
+
+    public ArrayList<Bullet> getBullets() {
+        return bullets;
+    }
+    
+    public boolean isFacingLeft() {
+        return this.hFlip;
     }
 }

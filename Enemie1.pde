@@ -83,8 +83,8 @@ class Enemy extends PhysicsObject {
         }
     }
 
-    void takeHit() {
-        health -= 10; // Reduce health by 10 on each hit
+    void takeDamage(int damage) {
+        health -= damage; // Reduce health by 10 on each hit
         isHit = true;
         currentFrame = 0;
         if (health <= 0) {
