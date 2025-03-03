@@ -2,6 +2,7 @@ Background bg;
 Character character;
 Platform platform;
 Enemy enemy;
+Water water;
 boolean attackLanded = false;
 boolean gameOver = false; // Track game over state
 boolean gameStarted = false; // Track if game has started
@@ -28,6 +29,9 @@ void setup() {
   // Create springs and add them to the list
   springs.add(new Spring(new PVector(width / 4, height - 20)));
   springs.add(new Spring(new PVector(width * 3 / 4, height - 20)));
+
+  // Create water at the bottom portion of the screen
+  water = new Water(0, height - 150, width, 150);
   
   // Add objects to physics engine
   physicsEngine.addObject(character);
@@ -84,8 +88,11 @@ void draw() {
   }
   
   if (!gameOver) {
-    // Update physics engine instead of directly updating objects
+    // Update physics 
     physicsEngine.update();
+
+    // Update water
+    water.update();
     
     // The character and enemy still need their own update methods for animation
     // but we've modified their physics to use the force accumulator
@@ -207,6 +214,9 @@ void checkSprings() {
 }
 
 void drawGameObjects() {
+  // Draw water
+  water.draw();
+
   // Draw springs
   for (Spring spring : springs) {
     spring.draw();
