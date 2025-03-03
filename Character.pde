@@ -10,7 +10,9 @@ class Character extends PhysicsObject {
     private final static float ATTACK_RANGE = 70.0f; // Attack range
     private final static int ATTACK_COLLISION_START_FRAME = 4; // Start frame for collision detection
     private final static int ATTACK_COLLISION_END_FRAME = 8; // End frame for collision detection
-    // private final static float MAX_SPRING_HEIGHT = 100.0f;
+    private final static float SPRING_GRAVITY_REDUCTION = 0.9f; // Reduced gravity when bouncing on spring
+    private int springForceFrames = 0;
+    private final static int MAX_SPRING_FORCE_FRAMES = 60; // Number of frames to apply spring force
 
     private PImage[] idleFrames;
     private PImage[] runFrames;
@@ -164,21 +166,28 @@ class Character extends PhysicsObject {
         
         if (jumpingUp) {
             if (springBounce) {
-                // Spring-powered jump - don't apply any additional forces
-                // Just check if we're starting to fall
+                // Only apply upward force for a limited number of frames
+                if (springForceFrames < MAX_SPRING_FORCE_FRAMES) {
+                    // Apply an upward force that counteracts most of gravity during spring bounce
+                    applyForce(new PVector(0, -2.8f * SPRING_GRAVITY_REDUCTION));
+                    springForceFrames++;
+                }
+                
+                // Check if we're starting to fall
                 if (velocity.y >= 0) {
                     jumpingUp = false;
                     fallingDown = true;
                     springBounce = false; // Reset spring bounce state
+                    springForceFrames = 0; // Reset frame counter
                 }
                 
-                // Enforce a ceiling for spring jumps
-                if (position.y < 50) {  // Don't go above 50px from the top
-                    position.y = 50;
-                    velocity.y *= 0.5;  // Slow down when hitting ceiling
+                // Allow character to go much higher during spring bounce
+                if (position.y < 5) {  // Almost at the very top of the screen
+                    position.y = 5;
+                    velocity.y *= 0.3;  // Significant slowdown when hitting ceiling
                 }
             } else {
-                // Normal jump - apply decreasing force
+                // Normal jump code - unchanged
                 float jumpProgress = (jumpStartY - position.y) / JUMP_HEIGHT;
                 float currentJumpForce = JUMP_FORCE * (1.0f - jumpProgress * 0.3f);
                 
@@ -374,5 +383,8 @@ class Character extends PhysicsObject {
 
     public void setSpringBounce(boolean springBounce) {
         this.springBounce = springBounce;
+        if (springBounce) {
+            this.springForceFrames = 0; // Reset the frame counter when activating spring bounce
+        }
     }
 }

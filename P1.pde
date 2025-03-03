@@ -170,17 +170,36 @@ void checkSprings() {
       character.position.y = springTopY - character.getRadius();
       
       if (spring.compress()) {
+        // Clear any accumulated forces that might counteract the bounce
+        character.clearForces();
+        
+        // Apply a powerful upward velocity
         character.velocity.y = -spring.getBounceForce();
+        
+        // Add a horizontal boost in the direction the character is moving
+        if (character.velocity.x != 0) {
+          character.velocity.x *= 1.3; // Increase horizontal momentum by 30%
+        }
+        
+        // Set spring bounce state
         character.setSpringBounce(true);
         character.jumpingUp = true;
         character.fallingDown = false;
         character.jumpStartY = character.position.y;
 
-        // Add a visual effect for super jump
+        // Add a more dramatic visual effect for super jump
         pushStyle();
-        fill(255, 255, 0, 100); // Yellow flash
+        fill(255, 255, 0, 150); // Brighter yellow flash
         noStroke();
-        ellipse(spring.position.x, spring.position.y, 80, 40);
+        ellipse(spring.position.x, spring.position.y, 100, 50); // Larger effect
+        
+        // Add some particles for extra effect
+        for (int i = 0; i < 10; i++) {
+          float particleX = spring.position.x + random(-40, 40);
+          float particleY = spring.position.y + random(-10, 10);
+          fill(255, random(200, 255), 0, 200);
+          ellipse(particleX, particleY, random(5, 15), random(5, 15));
+        }
         popStyle();
       }
     }

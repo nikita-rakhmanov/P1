@@ -3,7 +3,7 @@ class Spring extends PhysicsObject {
   private boolean isCompressed = false;
   private float compressionTimer = 0.0f;
   private final float ANIMATION_SPEED = 0.2f;
-  private final float BOUNCE_FORCE = 60.0f; // Increased bounce force
+  private final float BOUNCE_FORCE = 50.0f; // Increased bounce force
   private color springColor = color(255, 100, 100); // Reddish color for the spring indicator
   
   Spring(PVector position) {
