@@ -6,6 +6,9 @@ boolean attackLanded = false;
 boolean gameOver = false; // Track game over state
 boolean gameStarted = false; // Track if game has started
 
+// Our new physics engine
+PhysicsEngine physicsEngine;
+
 void setup() {
   size(1024, 768);
   noSmooth();
@@ -13,10 +16,27 @@ void setup() {
   imageMode(CENTER);
   textMode(CENTER);
 
+  // Initialize physics engine
+  physicsEngine = new PhysicsEngine();
+
   bg = new Background("CharacterPack/Enviro/BG/trees_bg.png");
   character = new Character(new PVector(width / 2, height - 20)); // Spawn at the bottom middle
   platform = new Platform("CharacterPack/GPE/platforms/platform_through.png");
   enemy = new Enemy(new PVector(width / 2 + 100, height - 20), character); // Spawn enemy to the right of the player
+  
+  // Add objects to physics engine
+  physicsEngine.addObject(character);
+  physicsEngine.addObject(enemy);
+  
+  // Add force generators
+  
+  // Gravity force for character and enemy
+  physicsEngine.addForceGenerator(character, new GravityForce(1.5f));
+  physicsEngine.addForceGenerator(enemy, new GravityForce(1.5f));
+  
+  // Add drag force for a bit of air resistance
+  physicsEngine.addForceGenerator(character, new DragForce(0.01f));
+  physicsEngine.addForceGenerator(enemy, new DragForce(0.01f));
 }
 
 void keyPressed() {
@@ -54,7 +74,11 @@ void draw() {
   }
   
   if (!gameOver) {
-    // Only update game logic if game is not over
+    // Update physics engine instead of directly updating objects
+    physicsEngine.update();
+    
+    // The character and enemy still need their own update methods for animation
+    // but we've modified their physics to use the force accumulator
     character.update();
     enemy.update();
 
@@ -114,6 +138,9 @@ void draw() {
   // Always draw character and enemy (even when game over)
   character.draw();
   enemy.draw();
+
+  // Uncomment to see physics debug visualization
+  // physicsEngine.debugDraw();
 
   // display health of the player in the left top corner
   fill(255);
@@ -188,7 +215,21 @@ void resetGame() {
   gameOver = false;
   attackLanded = false;
   
+  // Clean up old physics objects
+  physicsEngine.removeObject(character);
+  physicsEngine.removeObject(enemy);
+  
   // Recreate character and enemy
   character = new Character(new PVector(width / 2, height - 20));
   enemy = new Enemy(new PVector(width / 2 + 100, height - 20), character);
+  
+  // Add new objects to physics engine
+  physicsEngine.addObject(character);
+  physicsEngine.addObject(enemy);
+  
+  // Re-add force generators
+  physicsEngine.addForceGenerator(character, new GravityForce(1.5f));
+  physicsEngine.addForceGenerator(enemy, new GravityForce(1.5f));
+  physicsEngine.addForceGenerator(character, new DragForce(0.01f));
+  physicsEngine.addForceGenerator(enemy, new DragForce(0.01f));
 }

@@ -4,7 +4,6 @@ class Character extends PhysicsObject {
     private final static float ATTACK_ANIMATION_SPEED = 0.3f; // Faster attack animation speed
     private final static float MOVEMENT_SPEED = 1.3f;
     private final static float JUMP_FORCE = 12.0f; // Reduced force applied when jumping
-    private final static float GRAVITY = 2.5f; // Gravitational force
     private final static float GLIDE_GRAVITY = 0.5f; // Reduced gravitational force when gliding
     private final static float JUMP_HEIGHT = 40.0f;
     private final static int JUMP_PAUSE_DURATION = 1; // Number of frames to pause at the peak of the jump
@@ -33,9 +32,18 @@ class Character extends PhysicsObject {
     private ArrayList<Bullet> bullets = new ArrayList<Bullet>();
     private long lastShotTime = 0;
     private final static int SHOT_COOLDOWN = 500;
+    
+    // Force generators
+    private ConstantForce movementForce;
+    private ConstantForce jumpForce;
 
     public Character(PVector start) {
         super(start, 1.0f); // Initialize PhysicsObject with position and mass
+        
+        // Initialize force generators
+        movementForce = new ConstantForce(new PVector(0, 0));
+        jumpForce = new ConstantForce(new PVector(0, 0));
+        
         // load idleImages into idleFrames
         this.idleFrames = new PImage[16];
         for (int i = 0; i < 16; i++) {
@@ -78,14 +86,52 @@ class Character extends PhysicsObject {
     }
 
     public void update() {
-        // Apply gravity
-        if (gliding && !jumpingUp) {
-            applyForce(new PVector(0, GLIDE_GRAVITY));
-        } else {
-            applyForce(new PVector(0, GRAVITY));
+        // Update movement forces based on player input
+        updateMovementForces();
+        
+        // Update animation
+        updateAnimation();
+        
+        // Handle jump logic
+        updateJumpState();
+        
+        // Update bullets
+        updateBullets();
+        
+        // Call parent update which will handle physics and integration
+        super.update();
+    }
+    
+    private void updateMovementForces() {
+        // Reset movement force
+        PVector moveForce = new PVector(0, 0);
+        
+        // Apply movement forces based on input
+        if (movingLeft) {
+            moveForce.x = -MOVEMENT_SPEED;
+            this.hFlip = true;
         }
-
-        // update animation
+        if (movingRight) {
+            moveForce.x = MOVEMENT_SPEED;
+            this.hFlip = false;
+        }
+        
+        // Apply jump force if jumping
+        if (jumpingUp) {
+            moveForce.y = -JUMP_FORCE;
+            
+            // Check if we've reached jump height
+            if (this.position.y <= jumpStartY - JUMP_HEIGHT) {
+                jumpingUp = false;
+                jumpPauseCounter = JUMP_PAUSE_DURATION;
+            }
+        }
+        
+        // Apply the calculated movement force
+        applyForce(moveForce);
+    }
+    
+    private void updateAnimation() {
         if (shooting) {
             currentFrame += ATTACK_ANIMATION_SPEED;
             if (currentFrame >= shootFrames.length) {
@@ -94,7 +140,7 @@ class Character extends PhysicsObject {
             } else {
                 currentFrame %= shootFrames.length;
             }
-        }   else if (attacking) {
+        } else if (attacking) {
             currentFrame += ATTACK_ANIMATION_SPEED;
             if (currentFrame >= attackFrames[currentAttackIndex].length) {
                 attacking = false;
@@ -114,29 +160,16 @@ class Character extends PhysicsObject {
                 currentFrame %= idleFrames.length;
             }
         }
-
-        // update position
-        if (movingLeft) {
-            applyForce(new PVector(-MOVEMENT_SPEED, 0));
-            this.hFlip = true;
-        }
-        if (movingRight) {
-            applyForce(new PVector(MOVEMENT_SPEED, 0));
-            this.hFlip = false;
-        }
-        if (jumpingUp) {
-            applyForce(new PVector(0, -JUMP_FORCE));
-            if (this.position.y <= jumpStartY - JUMP_HEIGHT) {
-                jumpingUp = false;
-                jumpPauseCounter = JUMP_PAUSE_DURATION;
-            }
-        }
+    }
+    
+    private void updateJumpState() {
         if (jumpPauseCounter > 0) {
             jumpPauseCounter--;
             if (jumpPauseCounter == 0) {
                 fallingDown = true;
             }
         }
+        
         if (fallingDown) {
             if (this.position.y >= jumpStartY) {
                 this.position.y = jumpStartY;
@@ -144,7 +177,9 @@ class Character extends PhysicsObject {
                 velocity.y = 0; // Stop vertical velocity when landing
             }
         }
-
+    }
+    
+    private void updateBullets() {
         // Update bullets
         for (int i = bullets.size() - 1; i >= 0; i--) {
             Bullet bullet = bullets.get(i);
@@ -155,9 +190,6 @@ class Character extends PhysicsObject {
                 bullets.remove(i);
             }
         }
-
-        // Update physics
-        super.update();
     }
 
     public void draw() {

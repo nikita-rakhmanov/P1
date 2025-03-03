@@ -2,6 +2,7 @@ class PhysicsObject {
     PVector position;
     PVector velocity;
     PVector acceleration;
+    PVector forceAccum;  // Force accumulator
     float mass;
     float radius; // For collision detection
     float friction = 0.7; // Friction coefficient to reduce sliding
@@ -10,21 +11,37 @@ class PhysicsObject {
         this.position = position.copy();
         this.velocity = new PVector(0, 0);
         this.acceleration = new PVector(0, 0);
+        this.forceAccum = new PVector(0, 0);  // Initialize force accumulator
         this.mass = mass;
         this.radius = 20; // Default radius, adjust as necessary
     }
 
     void applyForce(PVector force) {
+        // Add force to accumulator instead of directly affecting acceleration
         PVector f = force.copy();
-        f.div(mass);
-        acceleration.add(f);
+        forceAccum.add(f);
+    }
+    
+    // Clear accumulated forces
+    void clearForces() {
+        forceAccum.set(0, 0);
     }
 
     void update() {
+        // Calculate acceleration from accumulated forces
+        acceleration = PVector.div(forceAccum, mass);
+        
+        // Update velocity with acceleration
         velocity.add(acceleration);
-        velocity.mult(friction); // Apply friction to reduce sliding
+        
+        // Apply friction to reduce sliding
+        velocity.mult(friction);
+        
+        // Update position with velocity
         position.add(velocity);
-        acceleration.mult(0); // Reset acceleration after each update
+        
+        // Clear forces for the next update
+        clearForces();
 
         // Boundary checks to keep the object within the screen
         if (position.x < radius) {

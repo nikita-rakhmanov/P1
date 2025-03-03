@@ -94,41 +94,58 @@ class Enemy extends PhysicsObject {
     }
 
     void update() {
-        // Apply gravity
-        applyForce(new PVector(0, 1.5f)); // Adjust gravity as necessary
-
+        // Process AI behavior and calculate forces
+        updateBehavior();
+        
+        // Call the parent update method to handle physics
+        super.update();
+    }
+    
+    void updateBehavior() {
         if (isDead) {
-            // prevent the player from attacking the dead enemy
+            // Dead enemies don't move
             currentFrame += 0.2; // Adjust speed as necessary
             if (currentFrame >= deathFrames.length) {
                 currentFrame = deathFrames.length - 1; // Stop at the last frame of the death animation
             }
-        } else if (isHit) {
+            return;
+        } 
+        
+        if (isHit) {
+            // Hit enemies pause their current behavior
             isAttacking = false;
             currentFrame += 0.2; // Adjust speed as necessary
             if (currentFrame >= hitFrames.length) {
                 isHit = false;
                 currentFrame = 0;
             }
-        } else if (isAttacking) {
-            // check in which direction is the player
+            return;
+        }
+        
+        if (isAttacking) {
+            // Check which direction the player is in
             if (player.position.x < position.x) {
                 hFlip = true;
             } else {
                 hFlip = false;
             }
+            
             currentFrame += 0.2; // Adjust speed as necessary
-            // check if the player is there mid animation
+            
+            // Check if the player is in attack range during the attack frames
             isInAttackCollisionFrame();
-            // check if the player is in the attack range
             isInAttackRange(player);
+            
+            // End attack animation
             if (currentFrame >= attackFrames.length) {
                 isAttacking = false;
                 isRunning = true;
                 currentFrame = 0;
             }
-        } else if (isRunning) {
+        } 
+        else if (isRunning) {
             currentFrame += 0.1; // Adjust speed as necessary
+            
             if (currentFrame >= runFrames.length) {
                 currentFrame = 0;
             }
@@ -150,6 +167,7 @@ class Enemy extends PhysicsObject {
                 isRunning = false;
                 currentFrame = 0;
             } else {
+                // Apply movement force based on facing direction
                 if (hFlip) {
                     applyForce(new PVector(-0.5, 0)); // Move left
                 } else {
@@ -157,25 +175,28 @@ class Enemy extends PhysicsObject {
                 }
             }
 
-            // run for a bit and then stop
+            // Run for a bit and then stop
             timer += 0.1;
             if (timer >= 15.0) { 
                 isRunning = false;
                 currentFrame = 0;
                 timer = 0.0;
             }
-        } else {
-            // start idle, wait for a bit and start running
+        } 
+        else {
+            // Idle state
             currentFrame += 0.1; // Adjust speed as necessary
             if (currentFrame >= idleFrames.length) {
                 currentFrame = 0;
             }
+            
             // Check if player is within attack range
             if (PVector.dist(position, player.position) < 25.0f) {
                 isAttacking = true;
                 isRunning = false;
                 currentFrame = 0;
             } else {
+                // Occasionally move even while idle
                 if (hFlip) {
                     applyForce(new PVector(-0.5, 0)); // Move left
                 } else {
@@ -190,26 +211,6 @@ class Enemy extends PhysicsObject {
                 currentFrame = 0;
                 timer = 0.0;
             }
-        }
-
-        // Update physics
-        super.update();
-
-        // Boundary checks to keep the object within the screen and bounce off edges
-        if (position.x < radius) {
-            position.x = radius;
-            velocity.x = abs(velocity.x); // Ensure velocity is positive to move right
-        } else if (position.x > width - radius) {
-            position.x = width - radius;
-            velocity.x = -abs(velocity.x); // Ensure velocity is negative to move left
-        }
-
-        if (position.y < radius) {
-            position.y = radius;
-            velocity.y = abs(velocity.y); // Ensure velocity is positive to move down
-        } else if (position.y > height - radius) {
-            position.y = height - radius;
-            velocity.y = -abs(velocity.y); // Ensure velocity is negative to move up
         }
     }
 

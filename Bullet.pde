@@ -1,7 +1,6 @@
 class Bullet extends PhysicsObject {
     private PImage bulletImage;
     private boolean active = true;
-    private float bulletSpeed = 55.0f;
     private color bulletColor = color(255); // White bullet color
     
     public Bullet(PVector position, PVector velocity) {
@@ -27,9 +26,14 @@ class Bullet extends PhysicsObject {
     }
     
     void update() {
+        // Override the parent update to avoid gravity and other forces
         // Bullet moves in a straight line without gravity
         position.add(velocity);
-        // super.update(); // Only adds velocity to position
+        
+        // Check if bullet has gone off-screen
+        if (isOffScreen()) {
+            active = false;
+        }
     }
     
     void draw() {
