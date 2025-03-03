@@ -5,6 +5,7 @@ Enemy enemy;
 boolean attackLanded = false;
 boolean gameOver = false; // Track game over state
 boolean gameStarted = false; // Track if game has started
+ArrayList<Spring> springs = new ArrayList<Spring>();
 
 // Our new physics engine
 PhysicsEngine physicsEngine;
@@ -23,10 +24,19 @@ void setup() {
   character = new Character(new PVector(width / 2, height - 20)); // Spawn at the bottom middle
   platform = new Platform("CharacterPack/GPE/platforms/platform_through.png");
   enemy = new Enemy(new PVector(width / 2 + 100, height - 20), character); // Spawn enemy to the right of the player
+
+  // Create springs and add them to the list
+  springs.add(new Spring(new PVector(width / 4, height - 20)));
+  springs.add(new Spring(new PVector(width * 3 / 4, height - 20)));
   
   // Add objects to physics engine
   physicsEngine.addObject(character);
   physicsEngine.addObject(enemy);
+
+  // Add springs to physics engine
+  for (Spring spring : springs) {
+    physicsEngine.addObject(spring);
+  }
   
   // Add force generators
   
@@ -134,25 +144,68 @@ void draw() {
       gameOver = true;
     }
   }
+
+  // check for spring collisions
+  checkSprings();
+
+  // Draw game objects
+  drawGameObjects();
   
-  // Always draw character and enemy (even when game over)
+  // Display HUD
+  displayHUD();
+}
+
+void checkSprings() {
+  for (Spring spring : springs) {
+    // Calculate distance between character's feet and spring's top surface
+    float characterFeetY = character.position.y + character.getRadius();
+    float springTopY = spring.position.y - spring.platformImage.height/2;
+    
+    // Use simplified collision check
+    boolean isAboveSpring = abs(character.position.x - spring.position.x) < spring.platformImage.width/2 * 0.7f;
+    boolean isTouchingSpring = characterFeetY >= springTopY - 10 && characterFeetY <= springTopY + 10;
+    boolean isFalling = character.velocity.y > 1.0;
+    
+    if (isAboveSpring && isTouchingSpring && isFalling) {
+      character.position.y = springTopY - character.getRadius();
+      
+      if (spring.compress()) {
+        character.velocity.y = -spring.getBounceForce();
+        character.setSpringBounce(true);
+        character.jumpingUp = true;
+        character.fallingDown = false;
+        character.jumpStartY = character.position.y;
+
+        // Add a visual effect for super jump
+        pushStyle();
+        fill(255, 255, 0, 100); // Yellow flash
+        noStroke();
+        ellipse(spring.position.x, spring.position.y, 80, 40);
+        popStyle();
+      }
+    }
+  }
+}
+
+void drawGameObjects() {
+  // Draw springs
+  for (Spring spring : springs) {
+    spring.draw();
+  }
+  
+  // Draw characters
   character.draw();
   enemy.draw();
+}
 
-  // Uncomment to see physics debug visualization
-  // physicsEngine.debugDraw();
-
-  // display health of the player in the left top corner
+void displayHUD() {
+  // Health display
   fill(255);
   textSize(20);
   text("Health: " + character.getHealth(), 50, 50);
-
-  // display health of the enemy in the right top corner
-  fill(255);
-  textSize(20);
   text("Health: " + enemy.getHealth(), width - 150, 50);
   
-  // Display game over message if applicable
+  // Game over message if applicable
   if (gameOver) {
     displayGameOver();
   }
@@ -215,21 +268,32 @@ void resetGame() {
   gameOver = false;
   attackLanded = false;
   
-  // Clean up old physics objects
-  physicsEngine.removeObject(character);
-  physicsEngine.removeObject(enemy);
+  // Clear the entire physics engine instead of removing objects individually
+  physicsEngine = new PhysicsEngine();
+  springs.clear();
   
-  // Recreate character and enemy
+  // Recreate game objects
   character = new Character(new PVector(width / 2, height - 20));
   enemy = new Enemy(new PVector(width / 2 + 100, height - 20), character);
+
+  // Re-create springs
+  springs.add(new Spring(new PVector(width / 4, height - 20)));
+  springs.add(new Spring(new PVector(width * 3 / 4, height - 20)));
   
-  // Add new objects to physics engine
+  // Add objects to physics engine
   physicsEngine.addObject(character);
   physicsEngine.addObject(enemy);
   
-  // Re-add force generators
-  physicsEngine.addForceGenerator(character, new GravityForce(1.5f));
-  physicsEngine.addForceGenerator(enemy, new GravityForce(1.5f));
-  physicsEngine.addForceGenerator(character, new DragForce(0.01f));
-  physicsEngine.addForceGenerator(enemy, new DragForce(0.01f));
+  for (Spring spring : springs) {
+    physicsEngine.addObject(spring);
+  }
+  
+  // Add force generators (using a single generator for each type rather than duplicates)
+  GravityForce gravity = new GravityForce(1.5f);
+  DragForce drag = new DragForce(0.01f);
+  
+  physicsEngine.addForceGenerator(character, gravity);
+  physicsEngine.addForceGenerator(enemy, gravity);
+  physicsEngine.addForceGenerator(character, drag);
+  physicsEngine.addForceGenerator(enemy, drag);
 }

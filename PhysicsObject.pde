@@ -1,3 +1,4 @@
+// Add this field to the PhysicsObject class
 class PhysicsObject {
     PVector position;
     PVector velocity;
@@ -6,6 +7,7 @@ class PhysicsObject {
     float mass;
     float radius; // For collision detection
     float friction = 0.7; // Friction coefficient to reduce sliding
+    boolean isStatic = false; // Flag to identify static objects like platforms and springs
 
     PhysicsObject(PVector position, float mass) {
         this.position = position.copy();
@@ -17,6 +19,9 @@ class PhysicsObject {
     }
 
     void applyForce(PVector force) {
+        // Don't apply forces to static objects
+        if (isStatic) return;
+        
         // Add force to accumulator instead of directly affecting acceleration
         PVector f = force.copy();
         forceAccum.add(f);
@@ -28,6 +33,9 @@ class PhysicsObject {
     }
 
     void update() {
+        // Static objects don't move
+        if (isStatic) return;
+        
         // Calculate acceleration from accumulated forces
         acceleration = PVector.div(forceAccum, mass);
         
@@ -71,6 +79,9 @@ class PhysicsObject {
     }
 
     void resolveCollision(PhysicsObject other) {
+        // If both objects are static, no collision resolution is needed
+        if (this.isStatic && other.isStatic) return;
+        
         PVector collisionNormal = PVector.sub(other.position, this.position).normalize();
         PVector relativeVelocity = PVector.sub(other.velocity, this.velocity);
         float separatingVelocity = PVector.dot(relativeVelocity, collisionNormal);
@@ -78,13 +89,52 @@ class PhysicsObject {
         if (separatingVelocity > 0) return;
 
         float newSeparatingVelocity = -separatingVelocity;
-        PVector separatingVelocityVec = PVector.mult(collisionNormal, newSeparatingVelocity);
-
-        this.velocity.add(separatingVelocityVec);
-        other.velocity.sub(separatingVelocityVec);
+        float totalInverseMass = 1/this.mass;
+        
+        // If the other object is static, only move this object
+        if (other.isStatic) {
+            // Push the non-static object away from the static object
+            PVector separationVector = PVector.mult(collisionNormal, this.radius + other.radius - PVector.dist(this.position, other.position));
+            this.position.sub(separationVector);
+            
+            // Reflect velocity for the non-static object only
+            this.velocity.add(PVector.mult(collisionNormal, -2 * PVector.dot(this.velocity, collisionNormal)));
+            this.velocity.mult(0.7); // Add some damping
+            return;
+        }
+        
+        // If this object is static, only move the other object
+        if (this.isStatic) {
+            // Push the non-static object away from the static object
+            PVector separationVector = PVector.mult(collisionNormal, this.radius + other.radius - PVector.dist(this.position, other.position));
+            other.position.add(separationVector);
+            
+            // Reflect velocity for the non-static object only
+            other.velocity.add(PVector.mult(collisionNormal, -2 * PVector.dot(other.velocity, collisionNormal)));
+            other.velocity.mult(0.7); // Add some damping
+            return;
+        }
+        
+        // If neither is static, handle normally (both objects move)
+        totalInverseMass += 1/other.mass;
+        
+        float impulse = newSeparatingVelocity / totalInverseMass;
+        PVector impulseVector = PVector.mult(collisionNormal, impulse);
+        
+        // Apply impulse proportionally based on mass
+        this.velocity.add(PVector.div(impulseVector, this.mass));
+        other.velocity.sub(PVector.div(impulseVector, other.mass));
     }
 
     public float getRadius() {
         return radius;
+    }
+    
+    public boolean isStatic() {
+        return isStatic;
+    }
+    
+    public void setStatic(boolean isStatic) {
+        this.isStatic = isStatic;
     }
 }

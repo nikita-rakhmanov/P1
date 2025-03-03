@@ -3,13 +3,14 @@ class Character extends PhysicsObject {
     private final static float ANIMATION_SPEED = 0.1f;
     private final static float ATTACK_ANIMATION_SPEED = 0.3f; // Faster attack animation speed
     private final static float MOVEMENT_SPEED = 1.3f;
-    private final static float JUMP_FORCE = 12.0f; // Reduced force applied when jumping
+    private final static float JUMP_FORCE = 8.0f; // Reduced force applied when jumping
     private final static float GLIDE_GRAVITY = 0.5f; // Reduced gravitational force when gliding
-    private final static float JUMP_HEIGHT = 40.0f;
+    private final static float JUMP_HEIGHT = 60.0f;
     private final static int JUMP_PAUSE_DURATION = 1; // Number of frames to pause at the peak of the jump
     private final static float ATTACK_RANGE = 70.0f; // Attack range
     private final static int ATTACK_COLLISION_START_FRAME = 4; // Start frame for collision detection
     private final static int ATTACK_COLLISION_END_FRAME = 8; // End frame for collision detection
+    // private final static float MAX_SPRING_HEIGHT = 100.0f;
 
     private PImage[] idleFrames;
     private PImage[] runFrames;
@@ -20,6 +21,7 @@ class Character extends PhysicsObject {
     private int[] attackFrameCounts = {12, 13, 9}; // Number of frames in each attack animation
     private float currentFrame = 0.0f;
     private boolean hFlip = false;
+    private boolean springBounce = false;
 
     private boolean movingLeft, movingRight, jumpingUp, fallingDown, attacking, attackingFlag, gliding;
     private float jumpStartY;
@@ -36,6 +38,7 @@ class Character extends PhysicsObject {
     // Force generators
     private ConstantForce movementForce;
     private ConstantForce jumpForce;
+
 
     public Character(PVector start) {
         super(start, 1.0f); // Initialize PhysicsObject with position and mass
@@ -116,17 +119,6 @@ class Character extends PhysicsObject {
             this.hFlip = false;
         }
         
-        // Apply jump force if jumping
-        if (jumpingUp) {
-            moveForce.y = -JUMP_FORCE;
-            
-            // Check if we've reached jump height
-            if (this.position.y <= jumpStartY - JUMP_HEIGHT) {
-                jumpingUp = false;
-                jumpPauseCounter = JUMP_PAUSE_DURATION;
-            }
-        }
-        
         // Apply the calculated movement force
         applyForce(moveForce);
     }
@@ -170,11 +162,51 @@ class Character extends PhysicsObject {
             }
         }
         
+        if (jumpingUp) {
+            if (springBounce) {
+                // Spring-powered jump - don't apply any additional forces
+                // Just check if we're starting to fall
+                if (velocity.y >= 0) {
+                    jumpingUp = false;
+                    fallingDown = true;
+                    springBounce = false; // Reset spring bounce state
+                }
+                
+                // Enforce a ceiling for spring jumps
+                if (position.y < 50) {  // Don't go above 50px from the top
+                    position.y = 50;
+                    velocity.y *= 0.5;  // Slow down when hitting ceiling
+                }
+            } else {
+                // Normal jump - apply decreasing force
+                float jumpProgress = (jumpStartY - position.y) / JUMP_HEIGHT;
+                float currentJumpForce = JUMP_FORCE * (1.0f - jumpProgress * 0.3f);
+                
+                if (position.y > jumpStartY - JUMP_HEIGHT) {
+                    applyForce(new PVector(0, -currentJumpForce));
+                } else {
+                    jumpingUp = false;
+                    jumpPauseCounter = JUMP_PAUSE_DURATION;
+                }
+            }
+        }
+        
+        // Check for gliding
+        if (fallingDown && gliding) {
+            applyForce(new PVector(0, -GLIDE_GRAVITY));
+        }
+        
         if (fallingDown) {
-            if (this.position.y >= jumpStartY) {
+            // Check if we've reached the original ground level
+            if (position.y >= jumpStartY) {
                 this.position.y = jumpStartY;
                 fallingDown = false;
                 velocity.y = 0; // Stop vertical velocity when landing
+            }
+            
+            // If we're falling but velocity is upward (from a spring bounce), correct it
+            if (velocity.y < 0) {
+                jumpingUp = true;
             }
         }
     }
@@ -338,5 +370,9 @@ class Character extends PhysicsObject {
     
     public boolean isFacingLeft() {
         return this.hFlip;
+    }
+
+    public void setSpringBounce(boolean springBounce) {
+        this.springBounce = springBounce;
     }
 }

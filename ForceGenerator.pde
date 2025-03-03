@@ -65,36 +65,6 @@ class ConstantForce implements ForceGenerator {
   }
 }
 
-// Spring force generator (simple version)
-class SpringForce implements ForceGenerator {
-  private PVector anchor; // Fixed anchor point
-  private float springConstant; // Spring stiffness
-  private float restLength; // Natural spring length
-  
-  SpringForce(PVector anchor, float springConstant, float restLength) {
-    this.anchor = anchor.copy();
-    this.springConstant = springConstant;
-    this.restLength = restLength;
-  }
-  
-  void updateForce(PhysicsObject object) {
-    // Vector from object to anchor
-    PVector force = PVector.sub(object.position, anchor);
-    float magnitude = force.mag();
-    
-    // No force if we're at the anchor
-    if (magnitude == 0) return;
-    
-    // Calculate spring force: F = -k * (|d| - restLength) * (d / |d|)
-    float displacement = magnitude - restLength;
-    force.normalize();
-    force.mult(-springConstant * displacement);
-    
-    // Apply force
-    object.applyForce(force);
-  }
-}
-
 // Force Registry to manage all force generators
 class ForceRegistry {
   private ArrayList<ForceRegistration> registrations;
