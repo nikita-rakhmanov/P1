@@ -10,24 +10,24 @@ class Pond {
     edges = new ArrayList<PlatformEdge>();
     
     // Create the four edges (top, right, bottom, left)
-    edges.add(new PlatformEdge(x, y, width, 20, "top"));          // Top edge
-    edges.add(new PlatformEdge(x + width, y, 20, height, "right"));   // Right edge
-    edges.add(new PlatformEdge(x, y + height, width, 20, "bottom"));  // Bottom edge
-    edges.add(new PlatformEdge(x, y, 20, height, "left"));         // Left edge
+    edges.add(new PlatformEdge(x, y, width, 20, "top"));          
+    edges.add(new PlatformEdge(x + width, y, 20, height, "right"));   
+    edges.add(new PlatformEdge(x, y + height, width, 20, "bottom")); 
+    edges.add(new PlatformEdge(x, y, 20, height, "left"));         
   }
   
   void update() {
     // Update water
     water.update();
     
-    // Update platform edges if needed
+    // Update platform edges 
     for (PlatformEdge edge : edges) {
       edge.update();
     }
   }
   
   void draw() {
-    // Draw water first (so platforms appear on top)
+    // Draw water first 
     water.draw();
     
     // Draw platform edges
@@ -57,19 +57,19 @@ class PlatformEdge extends PhysicsObject {
     this.edgeWidth = w;
     this.edgeHeight = h;
     this.edgeType = type;
-    this.radius = max(w, h) / 2; // Set appropriate collision radius
+    this.radius = max(w, h) / 2;
     this.setStatic(true); // Platforms don't move
     
-    // Load the same platform image used for the ground
+
     img = loadImage("CharacterPack/GPE/platforms/platform_through.png");
   }
   
   void update() {
-    // Static objects don't need updates, but we could add animations here
+    // for animations later
   }
   
   void draw() {
-    // Draw the platform with appropriate sizing and orientation
+    // Draw the platform 
     pushMatrix();
     translate(position.x, position.y);
     

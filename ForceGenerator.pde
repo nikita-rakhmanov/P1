@@ -33,9 +33,9 @@ class DragForce implements ForceGenerator {
   void updateForce(PhysicsObject object) {
     // Get velocity magnitude
     float speed = object.velocity.mag();
-    if (speed == 0) return; // No velocity, no drag
+    if (speed == 0) return; // No velocity -> no drag
     
-    // Calculate drag magnitude: fd = -k * |v|²
+    // Calculate drag magnitude
     float dragMagnitude = k * speed * speed;
     
     // Create normalized drag force in opposite direction of velocity
@@ -48,7 +48,7 @@ class DragForce implements ForceGenerator {
   }
 }
 
-// Constant force (e.g., thrust) generator
+// Constant force generator
 class ConstantForce implements ForceGenerator {
   private PVector force;
   
@@ -105,7 +105,7 @@ class ForceRegistry {
     }
   }
   
-  // Helper class for registrations
+  // Helper
   private class ForceRegistration {
     PhysicsObject object;
     ForceGenerator fg;

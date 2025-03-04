@@ -6,26 +6,45 @@ class Enemy extends PhysicsObject {
     private PImage[] runFrames;
     private float currentFrame = 0.0f;
     private boolean hFlip = false;
-    private int health = 100; // Initial health
+    private int health = 100; 
     private boolean isDead = false;
     private boolean isHit = false;
     private boolean isAttacking = false;
     private boolean isRunning = false;
     private float timer = 0.0f;
-    private Character player; // Reference to the player character
-    private float radius = 20.0f; // Radius of the enemy
-    private final static int ATTACK_COLLISION_START_FRAME = 4; // Start frame for collision detection
-    private final static int ATTACK_COLLISION_END_FRAME = 12; // End frame for collision detection
+    private Character player; 
+    private float radius = 20.0f; 
+    private final static int ATTACK_COLLISION_START_FRAME = 4; 
+    private final static int ATTACK_COLLISION_END_FRAME = 12; 
+    private float patrolStartX; 
+    private float patrolDistance = 50.0f; 
+    private boolean patrollingRight = false; 
 
 
     public Enemy(PVector start, Character player) {
-        super(start, 1.0f); // Initialize PhysicsObject with position and mass
+        super(start, 1.0f); 
         this.player = player;
+        this.patrolStartX = start.x; 
+                
         loadIdleFrames("PixelArt_Samurai/Enemies/Assassin/PNG/WithoutOutline/Assassin_Idle.png");
         loadHitFrames("PixelArt_Samurai/Enemies/Assassin/PNG/WithoutOutline/Assassin_Hit.png");
         loadAttackFrames("PixelArt_Samurai/Enemies/Assassin/PNG/WithoutOutline/Assassin_Attack.png");
         loadDeathFrames("PixelArt_Samurai/Enemies/Assassin/PNG/WithoutOutline/Assassin_Death.png");
         loadRunFrames("PixelArt_Samurai/Enemies/Assassin/PNG/WithoutOutline/Assassin_Run.png");
+    }
+
+    public void setPatrolDirection(boolean patrolRight) {
+        this.patrollingRight = patrolRight;
+        this.hFlip = !patrolRight; // Face the direction we're moving
+    }
+
+    // set patrol distance
+    public void setPatrolDistance(float distance) {
+        this.patrolDistance = distance;
+    }
+
+    public void setStatic(boolean isStatic) {
+        this.isStatic = isStatic;
     }
 
     void loadIdleFrames(String imgPath) {
@@ -41,8 +60,8 @@ class Enemy extends PhysicsObject {
 
     void loadHitFrames(String imgPath) {
         PImage spriteSheet = loadImage(imgPath);
-        int frameCount = 9; // Number of frames in the sprite sheet
-        int frameWidth = spriteSheet.width / frameCount; // Width of each frame
+        int frameCount = 9; 
+        int frameWidth = spriteSheet.width / frameCount; 
         hitFrames = new PImage[frameCount];
 
         for (int i = 0; i < frameCount; i++) {
@@ -52,8 +71,8 @@ class Enemy extends PhysicsObject {
 
     void loadDeathFrames(String imgPath) {
         PImage spriteSheet = loadImage(imgPath);
-        int frameCount = 19; // Number of frames in the sprite sheet
-        int frameWidth = spriteSheet.width / frameCount; // Width of each frame
+        int frameCount = 19; 
+        int frameWidth = spriteSheet.width / frameCount; 
         deathFrames = new PImage[frameCount];
 
         for (int i = 0; i < frameCount; i++) {
@@ -63,8 +82,8 @@ class Enemy extends PhysicsObject {
 
     void loadAttackFrames(String imgPath) {
         PImage spriteSheet = loadImage(imgPath);
-        int frameCount = 19; // Number of frames in the sprite sheet
-        int frameWidth = spriteSheet.width / frameCount; // Width of each frame
+        int frameCount = 19; 
+        int frameWidth = spriteSheet.width / frameCount; 
         attackFrames = new PImage[frameCount];
 
         for (int i = 0; i < frameCount; i++) {
@@ -74,8 +93,8 @@ class Enemy extends PhysicsObject {
     
     void loadRunFrames(String imgPath) {
         PImage spriteSheet = loadImage(imgPath);
-        int frameCount = 8; // Number of frames in the sprite sheet
-        int frameWidth = spriteSheet.width / frameCount; // Width of each frame
+        int frameCount = 8; 
+        int frameWidth = spriteSheet.width / frameCount;
         runFrames = new PImage[frameCount];
 
         for (int i = 0; i < frameCount; i++) {
@@ -84,9 +103,12 @@ class Enemy extends PhysicsObject {
     }
 
     void takeDamage(int damage) {
-        health -= damage; // Reduce health by 10 on each hit
+        // Apply damage but ensure health doesn't go below 0
+        health = max(0, health - damage);
+        
         isHit = true;
         currentFrame = 0;
+        
         if (health <= 0) {
             isDead = true;
             currentFrame = 0;
@@ -94,17 +116,17 @@ class Enemy extends PhysicsObject {
     }
 
     void update() {
-        // Process AI behavior and calculate forces
+        // Process behavior and calculate forces
         updateBehavior();
         
-        // Call the parent update method to handle physics
+        // handle physics
         super.update();
     }
     
     void updateBehavior() {
         if (isDead) {
             // Dead enemies don't move
-            currentFrame += 0.2; // Adjust speed as necessary
+            currentFrame += 0.2; 
             if (currentFrame >= deathFrames.length) {
                 currentFrame = deathFrames.length - 1; // Stop at the last frame of the death animation
             }
@@ -114,7 +136,7 @@ class Enemy extends PhysicsObject {
         if (isHit) {
             // Hit enemies pause their current behavior
             isAttacking = false;
-            currentFrame += 0.2; // Adjust speed as necessary
+            currentFrame += 0.2; 
             if (currentFrame >= hitFrames.length) {
                 isHit = false;
                 currentFrame = 0;
@@ -130,7 +152,7 @@ class Enemy extends PhysicsObject {
                 hFlip = false;
             }
             
-            currentFrame += 0.2; // Adjust speed as necessary
+            currentFrame += 0.2; 
             
             // Check if the player is in attack range during the attack frames
             isInAttackCollisionFrame();
@@ -144,35 +166,47 @@ class Enemy extends PhysicsObject {
             }
         } 
         else if (isRunning) {
-            currentFrame += 0.1; // Adjust speed as necessary
+            currentFrame += 0.1; 
             
             if (currentFrame >= runFrames.length) {
                 currentFrame = 0;
             }
 
-            // Move enemy from edge to edge
-            if (position.x <= radius) {
-                position.x = radius + 1; // Move away from the boundary
-                velocity.x = abs(velocity.x); // Ensure velocity is positive to move right
-                hFlip = false; // Face right
-            } else if (position.x >= width - radius) {
-                position.x = width - radius - 1; // Move away from the boundary
-                velocity.x = -abs(velocity.x); // Ensure velocity is negative to move left
+            // ----- PATROL BEHAVIOR -----
+            // Check if we've reached the patrol boundary
+            if (patrollingRight && position.x >= patrolStartX + patrolDistance) {
+                // Change direction to left
+                patrollingRight = false;
                 hFlip = true; // Face left
+            } else if (!patrollingRight && position.x <= patrolStartX - patrolDistance) {
+                // Change direction to right
+                patrollingRight = true;
+                hFlip = false; // Face right
             }
+            
+            // For static enemies, directly modify position instead of using forces
+            if (isStatic) {
+                float moveSpeed = 0.5;
+                if (patrollingRight) {
+                    position.x += moveSpeed; // Move right 
+                } else {
+                    position.x -= moveSpeed; // Move left 
+                }
+            } else {
+                // Normal movements
+                if (patrollingRight) {
+                    applyForce(new PVector(0.5, 0)); // Move right
+                } else {
+                    applyForce(new PVector(-0.5, 0)); // Move left
+                }
+            }
+            // ----- end of PATROL BEHAVIOR -----
 
             // Check if player is within attack range
             if (PVector.dist(position, player.position) < 25.0f) {
                 isAttacking = true;
                 isRunning = false;
                 currentFrame = 0;
-            } else {
-                // Apply movement force based on facing direction
-                if (hFlip) {
-                    applyForce(new PVector(-0.5, 0)); // Move left
-                } else {
-                    applyForce(new PVector(0.5, 0)); // Move right
-                }
             }
 
             // Run for a bit and then stop
@@ -185,7 +219,7 @@ class Enemy extends PhysicsObject {
         } 
         else {
             // Idle state
-            currentFrame += 0.1; // Adjust speed as necessary
+            currentFrame += 0.1;
             if (currentFrame >= idleFrames.length) {
                 currentFrame = 0;
             }
@@ -196,7 +230,7 @@ class Enemy extends PhysicsObject {
                 isRunning = false;
                 currentFrame = 0;
             } else {
-                // Occasionally move even while idle
+                // Occasionally move 
                 if (hFlip) {
                     applyForce(new PVector(-0.5, 0)); // Move left
                 } else {
@@ -261,5 +295,10 @@ class Enemy extends PhysicsObject {
     // get health
     public int getHealth() {
         return health;
+    }
+
+    // Add this getter if it doesn't exist
+    public boolean isDead() {
+        return isDead;
     }
 }

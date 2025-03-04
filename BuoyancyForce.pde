@@ -1,7 +1,7 @@
 class BuoyancyForce implements ForceGenerator {
   private Water water;
   private float liquidDensity;
-  private float maxBuoyantForce = 2.5f; // Cap the maximum force to prevent flying away
+  private float maxBuoyantForce = 2.5f; 
   
   BuoyancyForce(Water water, float liquidDensity) {
     this.water = water;
@@ -9,7 +9,6 @@ class BuoyancyForce implements ForceGenerator {
   }
   
   void updateForce(PhysicsObject obj) {
-    // Skip static objects
     if (obj.isStatic) return;
     
     // Calculate submersion depth
@@ -21,7 +20,7 @@ class BuoyancyForce implements ForceGenerator {
     // Calculate the percentage of the object that is submerged
     float submersionRatio = min(1.0f, depth / (obj.radius * 2));
     
-    // Calculate buoyancy force - much gentler than before
+    // Calculate buoyancy force 
     float buoyantForce = liquidDensity * submersionRatio * 0.8f;
     
     // Cap the maximum force to prevent objects from flying away
@@ -40,13 +39,13 @@ class BuoyancyForce implements ForceGenerator {
       obj.applyForce(dragForce);
     }
     
-    // Visual effect: create ripples when objects move in water
-    if (obj.velocity.mag() > 1.0f && frameCount % 5 == 0) { // Reduced frequency
-      float rippleSize = map(obj.velocity.mag(), 0, 5, 3, 12); // Smaller ripples
+    // create ripples when objects move in water
+    if (obj.velocity.mag() > 1.0f && frameCount % 5 == 0) { 
+      float rippleSize = map(obj.velocity.mag(), 0, 5, 3, 12); 
       water.addRipple(obj.position.x, water.y, rippleSize);
     }
     
-    // Visual indicator of buoyancy (small bubbles)
+    // small bubbles
     if (random(1) < 0.05 && frameCount % 3 == 0) { // Reduced frequency
       float bubbleX = obj.position.x + random(-obj.radius/2, obj.radius/2);
       float bubbleY = obj.position.y + random(-obj.radius/2, obj.radius/2);

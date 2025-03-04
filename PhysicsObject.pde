@@ -3,7 +3,7 @@ class PhysicsObject {
     PVector position;
     PVector velocity;
     PVector acceleration;
-    PVector forceAccum;  // Force accumulator
+    PVector forceAccum;  
     float mass;
     float radius; // For collision detection
     float friction = 0.7; // Friction coefficient to reduce sliding
@@ -13,9 +13,9 @@ class PhysicsObject {
         this.position = position.copy();
         this.velocity = new PVector(0, 0);
         this.acceleration = new PVector(0, 0);
-        this.forceAccum = new PVector(0, 0);  // Initialize force accumulator
+        this.forceAccum = new PVector(0, 0);  
         this.mass = mass;
-        this.radius = 20; // Default radius, adjust as necessary
+        this.radius = 20; 
     }
 
     void applyForce(PVector force) {
@@ -70,7 +70,7 @@ class PhysicsObject {
     }
 
     void display() {
-        // Override this method in subclasses to display the object
+        // Override this to display the object
     }
 
     boolean isColliding(PhysicsObject other) {
@@ -99,7 +99,7 @@ class PhysicsObject {
             
             // Reflect velocity for the non-static object only
             this.velocity.add(PVector.mult(collisionNormal, -2 * PVector.dot(this.velocity, collisionNormal)));
-            this.velocity.mult(0.7); // Add some damping
+            this.velocity.mult(0.7); // damping
             return;
         }
         
@@ -115,7 +115,7 @@ class PhysicsObject {
             return;
         }
         
-        // If neither is static, handle normally (both objects move)
+        // If neither is static (both objects move)
         totalInverseMass += 1/other.mass;
         
         float impulse = newSeparatingVelocity / totalInverseMass;

@@ -1,15 +1,15 @@
 class Character extends PhysicsObject {
     // animation variables
     private final static float ANIMATION_SPEED = 0.1f;
-    private final static float ATTACK_ANIMATION_SPEED = 0.3f; // Faster attack animation speed
+    private final static float ATTACK_ANIMATION_SPEED = 0.3f; 
     private final static float MOVEMENT_SPEED = 1.3f;
-    private final static float JUMP_FORCE = 8.0f; // Reduced force applied when jumping
-    private final static float GLIDE_GRAVITY = 0.5f; // Reduced gravitational force when gliding
+    private final static float JUMP_FORCE = 8.0f; 
+    private final static float GLIDE_GRAVITY = 0.5f; 
     private final static float JUMP_HEIGHT = 60.0f;
     private final static int JUMP_PAUSE_DURATION = 1; // Number of frames to pause at the peak of the jump
-    private final static float ATTACK_RANGE = 70.0f; // Attack range
-    private final static int ATTACK_COLLISION_START_FRAME = 4; // Start frame for collision detection
-    private final static int ATTACK_COLLISION_END_FRAME = 8; // End frame for collision detection
+    private final static float ATTACK_RANGE = 70.0f;
+    private final static int ATTACK_COLLISION_START_FRAME = 4; 
+    private final static int ATTACK_COLLISION_END_FRAME = 8; 
     private final static float SPRING_GRAVITY_REDUCTION = 0.9f; // Reduced gravity when bouncing on spring
     private int springForceFrames = 0;
     private final static int MAX_SPRING_FORCE_FRAMES = 60; // Number of frames to apply spring force
@@ -43,37 +43,32 @@ class Character extends PhysicsObject {
 
 
     public Character(PVector start) {
-        super(start, 1.0f); // Initialize PhysicsObject with position and mass
+        super(start, 1.0f); 
         
-        // Initialize force generators
+        // force generators
         movementForce = new ConstantForce(new PVector(0, 0));
         jumpForce = new ConstantForce(new PVector(0, 0));
         
-        // load idleImages into idleFrames
         this.idleFrames = new PImage[16];
         for (int i = 0; i < 16; i++) {
             String framePath = "CharacterPack/Player/Idle/player_idle_" + nf(i + 1, 2) + ".png";
             this.idleFrames[i] = loadImage(framePath);
         }
-        // load runImages into runFrames
         this.runFrames = new PImage[10];
         for (int i = 0; i < 10; i++) {
             String framePath = "CharacterPack/Player/Run/player_run_" + nf(i + 1, 2) + ".png";
             this.runFrames[i] = loadImage(framePath);
         }
-        // load jumpImages into jumpFrames
         this.jumpFrames = new PImage[6];
         for (int i = 0; i < 6; i++) {
             String framePath = "CharacterPack/Player/JumpUp/player_jumpup_" + nf(i + 1, 2) + ".png";
             this.jumpFrames[i] = loadImage(framePath);
         }
-        // load fallImages into fallFrames
         this.fallFrames = new PImage[6];
         for (int i = 0; i < 6; i++) {
             String framePath = "CharacterPack/Player/JumpDown/player_jumpdown_" + nf(i + 1, 2) + ".png";
             this.fallFrames[i] = loadImage(framePath);
         }
-        // load attackImages into attackFrames
         this.attackFrames = new PImage[3][];
         for (int j = 0; j < 3; j++) {
             this.attackFrames[j] = new PImage[attackFrameCounts[j]];
@@ -82,7 +77,6 @@ class Character extends PhysicsObject {
                 this.attackFrames[j][i] = loadImage(framePath);
             }
         }
-        // Load shooting animation frames
         this.shootFrames = new PImage[12];
         for (int i = 0; i < 12; i++) {
             String framePath = "CharacterPack/Player/Shoot/player_shoot_" + nf(i + 1, 2) + ".png";
@@ -103,7 +97,7 @@ class Character extends PhysicsObject {
         // Update bullets
         updateBullets();
         
-        // Call parent update which will handle physics and integration
+        // Call parent update -> handle physics and integration
         super.update();
     }
     
@@ -181,13 +175,13 @@ class Character extends PhysicsObject {
                     springForceFrames = 0; // Reset frame counter
                 }
                 
-                // Allow character to go much higher during spring bounce
-                if (position.y < 5) {  // Almost at the very top of the screen
+                // go much higher during spring bounce
+                if (position.y < 5) {  
                     position.y = 5;
-                    velocity.y *= 0.3;  // Significant slowdown when hitting ceiling
+                    velocity.y *= 0.3;  //slowdown if hitting ceiling
                 }
             } else {
-                // Normal jump code - unchanged
+                // Normal jump
                 float jumpProgress = (jumpStartY - position.y) / JUMP_HEIGHT;
                 float currentJumpForce = JUMP_FORCE * (1.0f - jumpProgress * 0.3f);
                 
@@ -200,24 +194,27 @@ class Character extends PhysicsObject {
             }
         }
         
-        // Check for gliding
+        // Check for gliding 
         if (fallingDown && gliding) {
             applyForce(new PVector(0, -GLIDE_GRAVITY));
         }
         
-        if (fallingDown) {
-            // Check if we've reached the original ground level
-            if (position.y >= jumpStartY) {
-                this.position.y = jumpStartY;
-                fallingDown = false;
-                velocity.y = 0; // Stop vertical velocity when landing
-            }
-            
-            // If we're falling but velocity is upward (from a spring bounce), correct it
-            if (velocity.y < 0) {
-                jumpingUp = true;
-            }
+        // if not on ground and not jumping, then we should be falling
+        if (!jumpingUp && !isOnGround()) {
+            fallingDown = true;
         }
+        
+        // If we're falling but velocity is upward (from a spring bounce) -> correct it
+        if (fallingDown && velocity.y < 0) {
+            jumpingUp = true;
+            fallingDown = false;
+        }
+    }
+
+    private boolean isOnGround() {
+        // check if the character is on the main ground
+        boolean onMainGround = position.y >= height - 30 - radius;
+        return onMainGround;
     }
     
     private void updateBullets() {
@@ -258,7 +255,7 @@ class Character extends PhysicsObject {
             frameIndex = min((int)currentFrame, idleFrames.length - 1);
         }
 
-        // Safely access the frame
+        // access the frame
         PImage frame = frames[frameIndex];
         
         // Draw the character
@@ -277,7 +274,7 @@ class Character extends PhysicsObject {
         }
     }
 
-    // getters of position (for the camera)
+    // getters of position 
     public float getX() {
         return this.position.x;
     }
@@ -307,9 +304,7 @@ class Character extends PhysicsObject {
         // go back to normal color
         fill(255);  
         if (health <= 0) {
-            // Handle player death (e.g., game over, respawn, etc.)
             isDead = true;
-            println("Player is dead");
         }
     }
 
@@ -325,7 +320,7 @@ class Character extends PhysicsObject {
                 jumpStartY = this.position.y;
             }
         } else if (key == 's' || key == 'S') {
-            // jump down immediately if currently jumping up
+            // jump down immediately if currently jumping up (not used for now)
             if (jumpingUp) {
                 jumpingUp = false;
                 jumpPauseCounter = 0;

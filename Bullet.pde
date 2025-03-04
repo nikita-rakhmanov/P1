@@ -4,7 +4,7 @@ class Bullet extends PhysicsObject {
     private color bulletColor = color(255); // White bullet color
     
     public Bullet(PVector position, PVector velocity) {
-        super(position, 0.1f); // Bullets are lightweight
+        super(position, 0.1f); 
         this.velocity = velocity.copy();
         this.radius = 3.0f; // Small collision radius
         
@@ -26,8 +26,7 @@ class Bullet extends PhysicsObject {
     }
     
     void update() {
-        // Override the parent update to avoid gravity and other forces
-        // Bullet moves in a straight line without gravity
+        // Bullet moves in a straight line 
         position.add(velocity);
         
         // Check if bullet has gone off-screen
@@ -42,13 +41,10 @@ class Bullet extends PhysicsObject {
         // Draw the bullet with a slight glow effect
         pushStyle();
         imageMode(CENTER);
-        // Add a subtle glow effect
         blendMode(ADD);
         noStroke();
         fill(bulletColor, 100);
         ellipse(position.x, position.y, 3, 3);
-        
-        // Draw the main bullet
         image(bulletImage, position.x, position.y);
         popStyle();
     }

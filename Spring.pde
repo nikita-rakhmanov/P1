@@ -3,18 +3,17 @@ class Spring extends PhysicsObject {
   private boolean isCompressed = false;
   private float compressionTimer = 0.0f;
   private final float ANIMATION_SPEED = 0.2f;
-  private final float BOUNCE_FORCE = 50.0f; // Increased bounce force
+  private final float BOUNCE_FORCE = 50.0f; 
   private color springColor = color(255, 100, 100); // Reddish color for the spring indicator
   
   Spring(PVector position) {
-    super(position, 1.0f); // Physics object with position and mass
-    this.radius = 10.0f; // Smaller collision radius
-    this.isStatic = true; // Mark as a static object
+    super(position, 1.0f); 
+    this.radius = 10.0f;
+    this.isStatic = true; //static object
     
-    // Use the same platform image
     platformImage = loadImage("CharacterPack/GPE/platforms/platform_through.png");
     
-    // If image still isn't available, create a placeholder
+    //if isn't available, create a placeholder
     if (platformImage == null) {
       platformImage = createPlaceholderImage(64, 16, color(150, 150, 150));
     }
@@ -31,7 +30,6 @@ class Spring extends PhysicsObject {
   }
 
   void update() {
-    // Spring physics are simpler - it doesn't move, just animates when triggered
     super.update();
     
     // If compressed, update the timer
@@ -62,8 +60,8 @@ class Spring extends PhysicsObject {
       fill(springColor);
       noStroke();
       beginShape();
-      // Draw a zigzag shape across the entire platform
-      float zigzagWidth = platformImage.width - 8; // Slightly inset from edges
+      // Draw a zigzag shape 
+      float zigzagWidth = platformImage.width - 8; 
       float zigzagHeight = 8;
       float startX = position.x - zigzagWidth/2;
       float startY = position.y - platformImage.height/2 - zigzagHeight;
@@ -72,7 +70,7 @@ class Spring extends PhysicsObject {
       vertex(startX, startY + zigzagHeight);
       
       // Calculate how many zigzag segments to fit across the platform
-      int segments = 5; // Use an odd number for symmetry
+      int segments = 5; //odd number for symmetry
       float segmentWidth = zigzagWidth / segments;
       
       for (int i = 0; i < segments; i++) {

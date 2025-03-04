@@ -4,17 +4,20 @@ Platform ground;
 ArrayList<Enemy> enemies = new ArrayList<Enemy>();
 ArrayList<Spring> springs = new ArrayList<Spring>();
 ArrayList<PlatformObject> platforms = new ArrayList<PlatformObject>();
+ArrayList<Coin> coins = new ArrayList<Coin>();
 boolean attackLanded = false;
 boolean gameOver = false;
 boolean gameStarted = false;
 PhysicsEngine physicsEngine;
+long gameStartTime = 0;
+long gameEndTime = 0;
+boolean timerRunning = false;
 
-// Create a PlatformObject class for individual platforms
 class PlatformObject extends PhysicsObject {
   PImage platformImage;
   
   PlatformObject(float x, float y) {
-    super(new PVector(x, y), 0.0f); // Static object with infinite mass
+    super(new PVector(x, y), 0.0f); 
     this.isStatic = true;
     this.radius = 25.0f;
     
@@ -33,7 +36,7 @@ void setup() {
   imageMode(CENTER);
   textMode(CENTER);
 
-  // Initialize physics engine
+  // physics engine
   physicsEngine = new PhysicsEngine();
 
   // Load background and ground
@@ -43,34 +46,67 @@ void setup() {
   // Create character in the middle
   character = new Character(new PVector(width / 2, height - 30));
   
-  // Create enemies on both sides
+  // Create enemies on both sides with opposite patrol directions
   Enemy enemy1 = new Enemy(new PVector(width / 4, height - 30), character);
+  enemy1.setPatrolDirection(true); 
+  
   Enemy enemy2 = new Enemy(new PVector(width * 3 / 4, height - 30), character);
+  enemy2.setPatrolDirection(false); 
+  
+  // Create two more enemies
+  Enemy enemy3 = new Enemy(new PVector(width * 0.35f, height - 330 - 20), character); 
+  enemy3.setPatrolDirection(true); // Third enemy patrols right initially
+  enemy3.setStatic(true); // won't fall down
+  enemy3.setPatrolDistance(50.0f); // Limit patrol distance to platform width
+  
+  Enemy enemy4 = new Enemy(new PVector(width * 0.65f, height - 330 - 20), character); 
+  enemy4.setPatrolDirection(false);
+  enemy4.setStatic(true); 
+  enemy4.setPatrolDistance(50.0f); 
+  
   enemies.add(enemy1);
   enemies.add(enemy2);
+  enemies.add(enemy3);
+  enemies.add(enemy4);
   
-  // Create platforms for vertical traversal (from bottom to top)
-  // First layer - low platforms
-  platforms.add(new PlatformObject(width * 0.25f, height - 150));
-  platforms.add(new PlatformObject(width * 0.75f, height - 150));
+  float platformWidth = 32; // width of platform_through.png
   
-  // Second layer - middle platforms
-  platforms.add(new PlatformObject(width * 0.5f, height - 270));
+  // Create platforms for vertical traversal 
+  // First layer - low platforms 
+  platforms.add(new PlatformObject(width * 0.25f - platformWidth, height - 150)); 
+  platforms.add(new PlatformObject(width * 0.25f, height - 150));                
+  platforms.add(new PlatformObject(width * 0.25f + platformWidth, height - 150));
+  
+  platforms.add(new PlatformObject(width * 0.75f - platformWidth, height - 150)); 
+  platforms.add(new PlatformObject(width * 0.75f, height - 150));                 
+  platforms.add(new PlatformObject(width * 0.75f + platformWidth, height - 150));
+  
+  // Second layer - middle platforms 
+  platforms.add(new PlatformObject(width * 0.5f - platformWidth, height - 270));
+  platforms.add(new PlatformObject(width * 0.5f, height - 270));                
+  platforms.add(new PlatformObject(width * 0.5f + platformWidth, height - 270)); 
   
   // Third layer - higher platforms
-  platforms.add(new PlatformObject(width * 0.25f, height - 390));
-  platforms.add(new PlatformObject(width * 0.75f, height - 390));
+  platforms.add(new PlatformObject(width * 0.35f - platformWidth, height - 330)); 
+  platforms.add(new PlatformObject(width * 0.35f, height - 330));                 
+  platforms.add(new PlatformObject(width * 0.35f + platformWidth, height - 330)); 
   
-  // Fourth layer - high platforms
-  platforms.add(new PlatformObject(width * 0.5f, height - 510));
+  platforms.add(new PlatformObject(width * 0.65f - platformWidth, height - 330)); 
+  platforms.add(new PlatformObject(width * 0.65f, height - 330));                
+  platforms.add(new PlatformObject(width * 0.65f + platformWidth, height - 330)); 
   
-  // Top layer - highest platform (goal)
-  platforms.add(new PlatformObject(width * 0.5f, height - 630));
+  // Fourth layer - high platforms 
+  platforms.add(new PlatformObject(width * 0.5f - platformWidth, height - 410)); 
+  platforms.add(new PlatformObject(width * 0.5f, height - 490));                 
+  platforms.add(new PlatformObject(width * 0.5f + platformWidth, height - 410)); 
   
-  // Add springs at strategic locations
+  // Add springs at strategic locations 
   springs.add(new Spring(new PVector(width * 0.15f, height - 20))); // Left lower spring
   springs.add(new Spring(new PVector(width * 0.85f, height - 20))); // Right lower spring
   springs.add(new Spring(new PVector(width * 0.5f, height - 150))); // Middle spring on first platform
+  
+  // Add a coin on the top platform
+  coins.add(new Coin(new PVector(width * 0.5f, height - 510 - 10))); 
   
   // Add objects to physics engine
   physicsEngine.addObject(character);
@@ -101,10 +137,14 @@ void setup() {
   }
 }
 
+// Update keyPressed to start the timer when the game begins
 void keyPressed() {
   if (!gameStarted) {
     if (key == ENTER || key == RETURN) {
       gameStarted = true;
+      // Start the timer when the game begins
+      gameStartTime = millis();
+      timerRunning = true;
     }
   } else if (!gameOver) { // Only process inputs when game is active
     character.handleKeyPressed(key);
@@ -144,6 +184,9 @@ void draw() {
     for (Enemy enemy : enemies) {
       enemy.update();
     }
+    
+    // Update and check coins 
+    updateCoins();
     
     // Handle bullet collisions with all enemies
     handleBulletCollisions();
@@ -224,24 +267,59 @@ void handleEnemyAttacks() {
 }
 
 void handlePlatformCollisions() {
+  // Get character's position 
   float characterFeetY = character.position.y + character.radius;
-  float characterHeadY = character.position.y - character.radius;
+  float characterLeftX = character.position.x - character.radius * 0.8;
+  float characterRightX = character.position.x + character.radius * 0.8;
   
-  // Only check if character is falling down
-  if (character.velocity.y > 0) {
+  boolean wasOnPlatform = false;
+  
+  // First check if character is on the  ground
+  if (character.position.y >= height - 30) {
+    // character.position.y = height - 30 - character.radius;
+    character.velocity.y = 0;
+    character.fallingDown = false;
+    character.jumpStartY = character.position.y;
+    wasOnPlatform = true;
+  } else {
+    // Check platforms
     for (PlatformObject platform : platforms) {
-      float platformTopY = platform.position.y - platform.platformImage.height/2;
-      boolean isAbovePlatform = abs(character.position.x - platform.position.x) < platform.platformImage.width/2;
+      // Calculate platform bounds based on image dimensions
+      float platformWidth = platform.platformImage.width;
+      float platformHeight = platform.platformImage.height;
+      float platformTopY = platform.position.y - platformHeight/2;
+      float platformLeftX = platform.position.x - platformWidth/2;
+      float platformRightX = platform.position.x + platformWidth/2;
       
-      // If character is above the platform and within a small vertical distance
-      if (isAbovePlatform && characterFeetY >= platformTopY && characterFeetY <= platformTopY + 10) {
-        // Stop falling and place character on the platform
-        character.position.y = platformTopY - character.radius;
-        character.velocity.y = 0;
-        character.fallingDown = false;
-        character.jumpStartY = character.position.y;
-        break;
+      // Check horizontal overlap
+      boolean horizontalOverlap = characterRightX > platformLeftX && characterLeftX < platformRightX;
+      
+      if (horizontalOverlap) {
+        // Check if character is near the top of the platform and falling
+        boolean isFallingOntoTop = character.velocity.y >= 0 && 
+                                characterFeetY >= platformTopY && 
+                                characterFeetY <= platformTopY + 15;
+        
+        if (isFallingOntoTop) {
+          // Place character on top of platform
+          character.position.y = platformTopY - character.radius;
+          character.velocity.y = 0;
+          character.fallingDown = false;
+          character.jumpStartY = character.position.y;
+          wasOnPlatform = true;
+          break;
+        }
       }
+    }
+  }
+  
+  // Always set falling state if not on platform and not jumping
+  if (!wasOnPlatform && !character.jumpingUp) {
+    character.fallingDown = true;
+    
+    // Apply gravity immediately when falling off platform edge
+    if (character.velocity.y == 0) {
+      character.velocity.y = 0.1; // Small initial downward velocity
     }
   }
 }
@@ -252,7 +330,7 @@ void checkSprings() {
     float characterFeetY = character.position.y + character.getRadius();
     float springTopY = spring.position.y - spring.platformImage.height/2;
     
-    // Use simplified collision check
+    // collision check
     boolean isAboveSpring = abs(character.position.x - spring.position.x) < spring.platformImage.width/2 * 0.7f;
     boolean isTouchingSpring = characterFeetY >= springTopY - 10 && characterFeetY <= springTopY + 10;
     boolean isFalling = character.velocity.y > 1.0;
@@ -264,7 +342,7 @@ void checkSprings() {
         // Clear any accumulated forces that might counteract the bounce
         character.clearForces();
         
-        // Apply a powerful upward velocity
+        // Apply upward velocity
         character.velocity.y = -spring.getBounceForce();
         
         // Add a horizontal boost in the direction the character is moving
@@ -278,13 +356,13 @@ void checkSprings() {
         character.fallingDown = false;
         character.jumpStartY = character.position.y;
 
-        // Add a more dramatic visual effect for super jump
+        // visual effect for jump
         pushStyle();
-        fill(255, 255, 0, 150); // Brighter yellow flash
+        fill(255, 255, 0, 150); 
         noStroke();
-        ellipse(spring.position.x, spring.position.y, 100, 50); // Larger effect
+        ellipse(spring.position.x, spring.position.y, 100, 50); 
         
-        // Add some particles for extra effect
+        // particles
         for (int i = 0; i < 10; i++) {
           float particleX = spring.position.x + random(-40, 40);
           float particleY = spring.position.y + random(-10, 10);
@@ -308,6 +386,11 @@ void drawGameObjects() {
     spring.draw();
   }
   
+  // Draw coins
+  for (Coin coin : coins) {
+    coin.draw();
+  }
+  
   // Draw character
   character.draw();
   
@@ -322,18 +405,55 @@ void displayHUD() {
   fill(255);
   textSize(20);
   text("Health: " + character.getHealth(), 50, 50);
+  
+  // Enemy health display
   for (int i = 0; i < enemies.size(); i++) {
-    text("Health: " + enemies.get(i).getHealth(), width - 150, 50 + i * 30);
+    if (!enemies.get(i).isDead) {
+      fill(255, 0, 0); // Red for alive enemies
+      text("Enemy " + (i+1) + ": " + enemies.get(i).getHealth(), width - 200, 50 + i * 30);
+    } else {
+      fill(0, 255, 0); // Green for defeated enemies
+      text("Enemy " + (i+1) + ": Defeated", width - 200, 50 + i * 30);
+    }
   }
   
-  // Game over message if applicable
+  // Display enemies defeated counter
+  int defeatedCount = 0;
+  for (Enemy enemy : enemies) {
+    if (enemy.isDead) defeatedCount++;
+  }
+  
+  fill(255, 215, 0); // Gold color
+  text("Enemies Defeated: " + defeatedCount + "/" + enemies.size(), width/2 - 100, 50);
+  
+  // Stopwatch display
+  fill(255);
+  if (timerRunning) {
+    long currentTime = millis();
+    long elapsedTime = currentTime - gameStartTime;
+    text("Time: " + formatTime(elapsedTime), 50, 80);
+  } else if (gameEndTime > 0) {
+    // Display final time after victory
+    long elapsedTime = gameEndTime - gameStartTime;
+    text("Time: " + formatTime(elapsedTime), 50, 80);
+  }
+  
+  // Game over message 
   if (gameOver) {
     displayGameOver();
   }
 }
 
+// format milliseconds as mm:ss.ms
+String formatTime(long millis) {
+  int seconds = (int) (millis / 1000) % 60;
+  int minutes = (int) (millis / (1000 * 60));
+  int ms = (int) (millis % 1000) / 10; // Show only 2 digits for milliseconds
+  
+  return String.format("%02d:%02d.%02d", minutes, seconds, ms);
+}
+
 void displayStartScreen() {
-  // Semi-transparent overlay for better text visibility
   fill(0, 0, 0, 150);
   rect(0, 0, width, height);
   
@@ -351,9 +471,8 @@ void displayStartScreen() {
   int yPos = height/2;
   text("A / D - Move left / right", width/2, yPos);
   text("W - Jump", width/2, yPos + 35);
-  text("S - Fast fall", width/2, yPos + 70);
-  text("SPACE - Attack", width/2, yPos + 105);
-  text("SHIFT - Glide", width/2, yPos + 140);
+  text("SPACE - Attack", width/2, yPos + 70);
+  text("SHIFT - Glide", width/2, yPos + 105);
   
   // Start prompt
   textSize(30);
@@ -365,20 +484,38 @@ void displayStartScreen() {
 }
 
 void displayGameOver() {
-  // Semi-transparent overlay
   fill(0, 0, 0, 150);
   rect(0, 0, width, height);
   
-  // Game over text
-  fill(255, 0, 0);
-  textSize(80);
-  textAlign(CENTER, CENTER);
-  text("GAME OVER", width/2, height/2 - 40);
+  // Check if player died or if they won
+  boolean playerDied = character.isDead;
+  
+  if (playerDied) {
+    // Game over text - defeat
+    fill(255, 0, 0);
+    textSize(80);
+    textAlign(CENTER, CENTER);
+    text("GAME OVER", width/2, height/2 - 40);
+  } else {
+    // Victory text - all enemies defeated and coin collected
+    fill(255, 215, 0); // Gold color
+    textSize(80);
+    textAlign(CENTER, CENTER);
+    text("VICTORY!", width/2, height/2 - 40);
+    
+    fill(255);
+    textSize(30);
+    text("You defeated all enemies and reached the summit!", width/2, height/2 + 10);
+    
+    // Show the final time
+    textSize(24);
+    text("Your time: " + formatTime(gameEndTime - gameStartTime), width/2, height/2 + 50);
+  }
   
   // Instructions to restart
   fill(255);
   textSize(30);
-  text("Press 'R' to restart", width/2, height/2 + 40);
+  text("Press 'R' to restart", width/2, height/2 + 100);
   
   // Reset text alignment
   textAlign(LEFT, BASELINE);
@@ -389,34 +526,78 @@ void resetGame() {
   gameOver = false;
   attackLanded = false;
   
+  // Reset timer
+  gameStartTime = millis();
+  gameEndTime = 0;
+  timerRunning = true;
+  
   // Clear all collections
   physicsEngine = new PhysicsEngine();
   enemies.clear();
   springs.clear();
   platforms.clear();
+  coins.clear();
   
   // Recreate character, enemies, platforms and springs
   character = new Character(new PVector(width / 2, height - 30));
   
-  // Recreate enemies
+  // Recreate enemies with opposite patrol directions
   Enemy enemy1 = new Enemy(new PVector(width / 4, height - 30), character);
+  enemy1.setPatrolDirection(true); 
+  
   Enemy enemy2 = new Enemy(new PVector(width * 3 / 4, height - 30), character);
+  enemy2.setPatrolDirection(false); 
+  
+  // Recreate two more enemies on the third layer platforms 
+  Enemy enemy3 = new Enemy(new PVector(width * 0.35f, height - 330 - 20), character);
+  enemy3.setPatrolDirection(true); 
+  enemy3.setStatic(true); 
+  enemy3.setPatrolDistance(50.0f); 
+  
+  Enemy enemy4 = new Enemy(new PVector(width * 0.65f, height - 330 - 20), character); 
+  enemy4.setPatrolDirection(false); 
+  enemy4.setStatic(true); 
+  enemy4.setPatrolDistance(50.0f); 
+  
   enemies.add(enemy1);
   enemies.add(enemy2);
+  enemies.add(enemy3);
+  enemies.add(enemy4);
+
+  float platformWidth = 32;
   
-  // Recreate platforms (same layout as setup)
-  platforms.add(new PlatformObject(width * 0.25f, height - 150));
-  platforms.add(new PlatformObject(width * 0.75f, height - 150));
-  platforms.add(new PlatformObject(width * 0.5f, height - 270));
-  platforms.add(new PlatformObject(width * 0.25f, height - 390));
-  platforms.add(new PlatformObject(width * 0.75f, height - 390));
-  platforms.add(new PlatformObject(width * 0.5f, height - 510));
-  platforms.add(new PlatformObject(width * 0.5f, height - 630));
+  // Recreate platforms
+  platforms.add(new PlatformObject(width * 0.25f - platformWidth, height - 150));
+  platforms.add(new PlatformObject(width * 0.25f, height - 150));                 
+  platforms.add(new PlatformObject(width * 0.25f + platformWidth, height - 150)); 
+  
+  platforms.add(new PlatformObject(width * 0.75f - platformWidth, height - 150)); 
+  platforms.add(new PlatformObject(width * 0.75f, height - 150));                
+  platforms.add(new PlatformObject(width * 0.75f + platformWidth, height - 150)); 
+  
+  platforms.add(new PlatformObject(width * 0.5f - platformWidth, height - 270)); 
+  platforms.add(new PlatformObject(width * 0.5f, height - 270));                
+  platforms.add(new PlatformObject(width * 0.5f + platformWidth, height - 270)); 
+  
+  platforms.add(new PlatformObject(width * 0.35f - platformWidth, height - 330)); 
+  platforms.add(new PlatformObject(width * 0.35f, height - 330));                
+  platforms.add(new PlatformObject(width * 0.35f + platformWidth, height - 330)); 
+  
+  platforms.add(new PlatformObject(width * 0.65f - platformWidth, height - 330));
+  platforms.add(new PlatformObject(width * 0.65f, height - 330));                 
+  platforms.add(new PlatformObject(width * 0.65f + platformWidth, height - 330)); 
+  
+  platforms.add(new PlatformObject(width * 0.5f - platformWidth, height - 410)); 
+  platforms.add(new PlatformObject(width * 0.5f, height - 490));                 
+  platforms.add(new PlatformObject(width * 0.5f + platformWidth, height - 410));
   
   // Recreate springs
   springs.add(new Spring(new PVector(width * 0.15f, height - 20)));
   springs.add(new Spring(new PVector(width * 0.85f, height - 20)));
   springs.add(new Spring(new PVector(width * 0.5f, height - 150)));
+  
+  // Recreate coins
+  coins.add(new Coin(new PVector(width * 0.5f, height - 510 - 10))); 
   
   // Add objects to physics engine
   physicsEngine.addObject(character);
@@ -444,3 +625,68 @@ void resetGame() {
     physicsEngine.addForceGenerator(enemy, drag);
   }
 }
+
+// Update the updateCoins method to stop the timer when the player wins
+void updateCoins() {
+  // Update all coins
+  for (int i = coins.size() - 1; i >= 0; i--) {
+    Coin coin = coins.get(i);
+    coin.update();
+    
+    // Check for collision with player if not already collected
+    if (!coin.isCollected() && !gameOver) {
+      // distance-based collision check
+      float distance = PVector.dist(character.position, coin.position);
+      if (distance < character.radius + coin.radius) {
+        // Check if all enemies are defeated
+        boolean allEnemiesDefeated = true;
+        for (Enemy enemy : enemies) {
+          if (!enemy.isDead) {
+            allEnemiesDefeated = false;
+            break;
+          }
+        }
+        
+        if (allEnemiesDefeated) {
+          // All enemies are defeated, allow coin collection
+          coin.collect();
+          
+          // Stop the timer when the player wins
+          if (timerRunning) {
+            gameEndTime = millis();
+            timerRunning = false;
+          }
+          
+          // Add victory visual effect
+          pushStyle();
+          fill(255, 255, 0, 100);
+          ellipse(coin.position.x, coin.position.y, 200, 200);
+          popStyle();
+          
+          // Set game won state after a short delay to allow animation to play
+          Thread coinThread = new Thread(new Runnable() {
+            public void run() {
+              try {
+                // Wait for the coin destroy animation to finish
+                Thread.sleep(1000);
+                gameOver = true;
+              } catch (InterruptedException e) {
+                e.printStackTrace();
+              }
+            }
+          });
+          coinThread.start();
+        } else {
+          // Not all enemies defeated, show a message
+          pushStyle();
+          fill(255, 0, 0, 150);
+          textSize(20);
+          textAlign(CENTER, CENTER);
+          text("Defeat all enemies first!", width/2, height/2 - 100);
+          popStyle();
+        }
+      }
+    }
+  }
+}
+

@@ -66,7 +66,7 @@ class Water {
   
   float getSubmersionDepth(PhysicsObject obj) {
     if (obj.position.y - obj.radius > y + height) {
-      // Object is below the water (shouldn't happen normally)
+      // Object is below the water
       return 0;
     }
     
@@ -94,7 +94,7 @@ class Water {
     }
   }
   
-  // Inner class for ripple effect
+  //ripple effect
   class Ripple {
     float x, y;
     float radius;
@@ -119,7 +119,7 @@ class Water {
     void draw() {
       stroke(255, 255, 255, alpha);
       noFill();
-      ellipse(x, y, radius * 2, radius / 2); // Flattened ellipse for perspective
+      ellipse(x, y, radius * 2, radius / 2); // Ellipse with half the height
     }
     
     boolean isDead() {

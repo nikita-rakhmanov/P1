@@ -55,17 +55,16 @@ class PhysicsEngine {
   }
   
   private void checkCollisions() {
-    // Basic collision detection
+    // collision detection
     for (int i = 0; i < objects.size(); i++) {
         PhysicsObject objA = objects.get(i);
         
         for (int j = i + 1; j < objects.size(); j++) {
         PhysicsObject objB = objects.get(j);
         
-        // Skip collisions between Character and Enemy - they should be able to overlap
-        // This prevents them from pushing each other away
-        if ((objA instanceof Character && objB instanceof Enemy) || 
-            (objA instanceof Enemy && objB instanceof Character)) {
+        // Skip collisions between Character and Enemy or Platform
+        if ((objA instanceof Character && (objB instanceof Enemy || objB instanceof PlatformObject)) || 
+            ((objA instanceof Enemy || objA instanceof PlatformObject) && objB instanceof Character)) {
             continue;  // Skip to the next iteration
         }
         
@@ -75,16 +74,15 @@ class PhysicsEngine {
         }
         }
     }
-  }
+}
   
   // Get all physics objects
   ArrayList<PhysicsObject> getObjects() {
     return objects;
   }
   
-  // Debug visualization
+  // Debug visualization (circles)
   void debugDraw() {
-    // Draw collision circles for all objects
     for (PhysicsObject obj : objects) {
       pushStyle();
       noFill();
